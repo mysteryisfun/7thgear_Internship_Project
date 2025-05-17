@@ -16,13 +16,15 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'
 
 from src.video_processing.frame_extractor import FrameExtractor
 from src.video_processing.tesseract_text_extractor import TesseractTextExtractor
+from src.video_processing.paddleocr_text_extractor import PaddleOCRTextExtractor
 
 def process_video(
     video_path: str,
     output_dir: str,
     fps: float = 1.0,
     similarity_threshold: float = 0.8,
-    tesseract_path: str = None
+    tesseract_path: str = None,
+    use_paddleocr: bool = False
 ) -> Tuple[List[str], List[str]]:
     """
     Process a video to extract frames and detect scenes based on text changes.
@@ -33,6 +35,7 @@ def process_video(
         fps: Frame rate for extraction
         similarity_threshold: Threshold for text similarity
         tesseract_path: Path to tesseract executable
+        use_paddleocr: Use PaddleOCR instead of Tesseract
     
     Returns:
         Tuple of (all_frame_paths, keyframe_paths)
@@ -53,9 +56,13 @@ def process_video(
     frame_paths = [path for path, _ in frame_paths_with_timestamps]
     print(f"Extracted {len(frame_paths)} frames at {fps} fps")
     
-    # Step 2: Extract text from frames using Tesseract
-    print("Extracting text from frames using Tesseract...")
-    text_extractor = TesseractTextExtractor(tesseract_path)
+    # Step 2: Extract text from frames using the specified OCR engine
+    print("Extracting text from frames using OCR...")
+    if use_paddleocr:
+        text_extractor = PaddleOCRTextExtractor()
+    else:
+        text_extractor = TesseractTextExtractor(tesseract_path)
+
     extracted_texts = text_extractor.extract_text_from_frames(frame_paths)
 
     # Print extracted text for each frame
@@ -93,6 +100,11 @@ def main():
         help="Path to tesseract executable",
         default=None
     )
+    parser.add_argument(
+        "--use-paddleocr", "-p",
+        help="Use PaddleOCR instead of Tesseract",
+        action="store_true"
+    )
     
     args = parser.parse_args()
     
@@ -102,7 +114,8 @@ def main():
         args.output_dir,
         args.fps,
         args.similarity_threshold,
-        args.tesseract_path
+        args.tesseract_path,
+        args.use_paddleocr
     )
 
 if __name__ == "__main__":
