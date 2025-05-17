@@ -10,6 +10,7 @@ import argparse
 from pathlib import Path
 from typing import List, Tuple
 import sys
+import cv2
 
 # Add src directory to Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
@@ -17,6 +18,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'
 from src.video_processing.frame_extractor import FrameExtractor
 from src.video_processing.tesseract_text_extractor import TesseractTextExtractor
 from src.video_processing.paddleocr_text_extractor import PaddleOCRTextExtractor
+from src.video_processing.text_processor import TextProcessor
+from src.video_processing.nlp_processing import NLPProcessor
 
 def process_video(
     video_path: str,
@@ -58,6 +61,7 @@ def process_video(
     
     # Step 2: Extract text from frames using the specified OCR engine
     print("Extracting text from frames using OCR...")
+
     if use_paddleocr:
         text_extractor = PaddleOCRTextExtractor()
     else:
@@ -65,11 +69,29 @@ def process_video(
 
     extracted_texts = text_extractor.extract_text_from_frames(frame_paths)
 
-    # Print extracted text for each frame
+    # Print original extracted text
     for i, text in enumerate(extracted_texts):
-        print(f"Frame {i+1}:\n{text}\n")
+        print(f"Original Text {i+1}:\n{text}\n")
 
-    print("Text extraction complete.")
+    # Step 3: Process extracted text
+    print("Processing extracted text...")
+    text_processor = TextProcessor(similarity_threshold)
+    processed_texts = text_processor.process_text(extracted_texts)
+
+    # Print processed text for debugging (optional)
+    for i, text in enumerate(processed_texts):
+        print(f"Processed Text {i+1}:\n{text}\n")
+
+    # Step 4: Apply NLP techniques to original texts
+    print("Applying NLP techniques to original texts...")
+    nlp_processor = NLPProcessor()
+    nlp_processed_texts = nlp_processor.process_texts(extracted_texts)
+
+    # Print NLP-processed text
+    for i, text in enumerate(nlp_processed_texts):
+        print(f"NLP Processed Text {i+1}:\n{text}\n")
+
+    print("Text processing complete.")
     return frame_paths, []  # Returning empty list for keyframes as scene detection is removed
 
 def main():
