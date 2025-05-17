@@ -3,7 +3,7 @@ from typing import List
 
 class PaddleOCRTextExtractor:
     def __init__(self):
-        self.ocr = PaddleOCR()
+        self.ocr = PaddleOCR(use_angle_cls=True, lang='en',det_db_box_thresh=0.3)
 
     def extract_text_from_frames(self, frame_paths: List[str]) -> List[str]:
         """

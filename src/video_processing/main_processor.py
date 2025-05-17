@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import List, Tuple
 import sys
 import cv2
+from difflib import SequenceMatcher
 
 # Add src directory to Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
@@ -20,6 +21,7 @@ from src.video_processing.tesseract_text_extractor import TesseractTextExtractor
 from src.video_processing.paddleocr_text_extractor import PaddleOCRTextExtractor
 from src.video_processing.text_processor import TextProcessor
 from src.video_processing.nlp_processing import NLPProcessor
+
 
 def process_video(
     video_path: str,
@@ -59,13 +61,9 @@ def process_video(
     frame_paths = [path for path, _ in frame_paths_with_timestamps]
     print(f"Extracted {len(frame_paths)} frames at {fps} fps")
     
-    # Step 2: Extract text from frames using the specified OCR engine
-    print("Extracting text from frames using OCR...")
-
-    if use_paddleocr:
-        text_extractor = PaddleOCRTextExtractor()
-    else:
-        text_extractor = TesseractTextExtractor(tesseract_path)
+    # Step 2: Extract text from frames using PaddleOCR
+    print("Extracting text from frames using PaddleOCR...")
+    text_extractor = PaddleOCRTextExtractor()
 
     extracted_texts = text_extractor.extract_text_from_frames(frame_paths)
 
@@ -73,26 +71,39 @@ def process_video(
     for i, text in enumerate(extracted_texts):
         print(f"Original Text {i+1}:\n{text}\n")
 
-    # Step 3: Process extracted text
-    print("Processing extracted text...")
-    text_processor = TextProcessor(similarity_threshold)
-    processed_texts = text_processor.process_text(extracted_texts)
-
-    # Print processed text for debugging (optional)
-    for i, text in enumerate(processed_texts):
-        print(f"Processed Text {i+1}:\n{text}\n")
-
-    # Step 4: Apply NLP techniques to original texts
-    print("Applying NLP techniques to original texts...")
+    # Initialize NLPProcessor
     nlp_processor = NLPProcessor()
-    nlp_processed_texts = nlp_processor.process_texts(extracted_texts)
 
-    # Print NLP-processed text
-    for i, text in enumerate(nlp_processed_texts):
-        print(f"NLP Processed Text {i+1}:\n{text}\n")
+    # Step 3: Pre-process extracted text by removing spaces and making it a single string
+    print("Pre-processing extracted text...")
+    preprocessed_texts = ["".join(text.split()) for text in extracted_texts]
+
+    # Step 4: Scene Detection based on text similarity
+    print("Detecting scenes based on text changes...")
+    scenes = []
+    previous_text = ""
+
+    for i, text in enumerate(preprocessed_texts):
+        if previous_text:
+            similarity = SequenceMatcher(None, previous_text, text).ratio()
+            if similarity < similarity_threshold:
+                scenes.append(i)  # Mark this frame as a scene change
+        previous_text = text
+
+    print(f"Detected {len(scenes)} scenes.")
+    for i, scene_index in enumerate(scenes):
+        print(f"Scene {i+1}: Frame {scene_index}")
+
+    # Process text of frames where scene changes were detected
+    scene_texts = [extracted_texts[scene_index] for scene_index in scenes]
+    nlp_processed_scene_texts = nlp_processor.process_texts(scene_texts)
+
+    # Print NLP-processed text for scenes
+    for i, text in enumerate(nlp_processed_scene_texts):
+        print(f"NLP Processed Scene Text {i+1}:\n{text}\n")
 
     print("Text processing complete.")
-    return frame_paths, []  # Returning empty list for keyframes as scene detection is removed
+    return frame_paths, scenes
 
 def main():
     # Parse command line arguments
