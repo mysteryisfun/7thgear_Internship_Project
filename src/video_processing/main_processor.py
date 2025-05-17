@@ -9,9 +9,13 @@ import os
 import argparse
 from pathlib import Path
 from typing import List, Tuple
+import sys
+
+# Add src directory to Python path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
 from src.video_processing.frame_extractor import FrameExtractor
-from src.video_processing.scene_analyzer import SceneAnalyzer
+from src.video_processing.tesseract_text_extractor import TesseractTextExtractor
 
 def process_video(
     video_path: str,
@@ -49,23 +53,17 @@ def process_video(
     frame_paths = [path for path, _ in frame_paths_with_timestamps]
     print(f"Extracted {len(frame_paths)} frames at {fps} fps")
     
-    # Step 2: Analyze frames for scene changes
-    print("Analyzing frames for scene changes...")
-    scene_analyzer = SceneAnalyzer(
-        similarity_threshold=similarity_threshold,
-        tesseract_path=tesseract_path
-    )
-    
-    # Extract keyframes
-    keyframe_paths = scene_analyzer.extract_keyframes(frame_paths, keyframes_dir)
-    print(f"Detected {len(keyframe_paths)} scenes")
-    
-    # Print scene information
-    for i, path in enumerate(keyframe_paths):
-        print(f"  Scene {i+1}: {os.path.basename(path)}")
-    
-    print(f"Processing complete. Key frames saved to: {keyframes_dir}")
-    return frame_paths, keyframe_paths
+    # Step 2: Extract text from frames using Tesseract
+    print("Extracting text from frames using Tesseract...")
+    text_extractor = TesseractTextExtractor(tesseract_path)
+    extracted_texts = text_extractor.extract_text_from_frames(frame_paths)
+
+    # Print extracted text for each frame
+    for i, text in enumerate(extracted_texts):
+        print(f"Frame {i+1}:\n{text}\n")
+
+    print("Text extraction complete.")
+    return frame_paths, []  # Returning empty list for keyframes as scene detection is removed
 
 def main():
     # Parse command line arguments
