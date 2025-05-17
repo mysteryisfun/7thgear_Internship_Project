@@ -1,14 +1,18 @@
 ---
 applyTo: '**'
 ---
-Coding standards, domain knowledge, and preferences that AI should follow.
 # Instructions for GitHub Copilot
-**develop the project without hurting the present functionality and navigation of project**
-**test every implementation before moveing to next**
-**always keep the structure of project intact to keep project organized and dont overcomplicate the implementaion with too many files**
-**always keep the code clean and readable**
-**maintain doccumnetaion after each phase of implementation**
-**maintain the indentation and formatting of the code correctly to avoid errors**
-**always use PowerShell syntax for running the scripts**
-**always look for virtual environment and use it for running the scripts if present**
-**always write the instuctions of implemented phase in doc folder so that can be refered later while integration and other things, write clear instuctions so that later understood easily for integration of that module**
+
+When assisting with this project, please adhere to the following guidelines:
+
+1. Preserve existing functionality and navigation within the project
+2. Test each implementation thoroughly before proceeding to the next task
+3. Maintain the current project structure to keep organization consistent
+4. Avoid overly complex implementations that create unnecessary files
+5. Write clean, readable code with proper documentation
+6. Document each implementation phase in the doc folder with clear integration instructions
+7. Maintain proper indentation and formatting to prevent errors
+8. Use PowerShell syntax for all scripts
+9. Utilize existing virtual environments when present
+
+These guidelines ensure consistency and quality throughout development.
