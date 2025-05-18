@@ -17,7 +17,6 @@ from difflib import SequenceMatcher
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
 from src.video_processing.frame_extractor import FrameExtractor
-from src.video_processing.tesseract_text_extractor import TesseractTextExtractor
 from src.video_processing.paddleocr_text_extractor import PaddleOCRTextExtractor
 from src.video_processing.text_processor import TextProcessor
 from src.video_processing.nlp_processing import NLPProcessor
