@@ -1,11 +1,10 @@
-
 # Phase 2: Video Processing Module - Frame Extraction and Scene Detection Implementation
 
 This document outlines the implementation of the Frame Extraction and Scene Detection components of the Intelligent Data Extraction System's Video Processing Module.
 
 ## Overview
 
-The Frame Extraction component is responsible for extracting individual frames from meeting videos at specified intervals. The Scene Detection component analyzes these frames to identify meaningful scene changes based on text content using OCR technology. These are the foundation of our video processing pipeline.
+The Frame Extraction component is responsible for extracting individual frames from meeting videos at specified intervals. The Scene Detection component analyzes these frames to identify meaningful scene changes based on text content using PaddleOCR technology. These are the foundation of our video processing pipeline.
 
 ## Features Implemented
 
@@ -24,8 +23,8 @@ The Frame Extraction component is responsible for extracting individual frames f
    - Consistent file naming convention (frame_00001.jpg, frame_00002.jpg, etc.)
    - Timestamp metadata preserved with each extracted frame
 
-4. **OCR-based Scene Detection**
-   - Implemented using Tesseract OCR via pytesseract
+4. **PaddleOCR-based Scene Detection**
+   - Implemented using PaddleOCR for text extraction
    - Text extraction and analysis for scene change detection
    - Text normalization to reduce false positives from OCR inconsistencies
    - Fallback to image-based methods when OCR is unavailable
@@ -49,21 +48,17 @@ The implementation consists of two main classes:
    - `check_ffmpeg_installed()`: Verifies FFmpeg availability on the system
    - `extract_frames()`: Extracts frames at the specified rate and returns frame paths with timestamps
 
-2. **SceneAnalyzer** in `src/video_processing/scene_analyzer.py`:
-   - `__init__(similarity_threshold, tesseract_path, use_ocr)`: Initializes the analyzer with similarity threshold and OCR options
-   - `extract_text(image_path)`: Extracts text from an image using OCR
-   - `normalize_text(text)`: Normalizes extracted text to reduce OCR inconsistencies
-   - `compare_text(text1, text2)`: Compares two text strings and returns similarity ratio
-   - `analyze_frame(frame_path, debug)`: Analyzes a frame for scene changes
-   - `extract_keyframes(frame_paths, output_dir)`: Extracts key frames representing scene changes
+2. **SceneDetector** in `src/video_processing/scene_detector.py`:
+   - `detect_scenes(frame_paths, similarity_threshold)`: Detects scene changes based on text similarity using PaddleOCR and `SequenceMatcher`
+   - `preprocess_text(text)`: Normalizes text for accurate comparison
+   - `compare_texts(text1, text2)`: Compares texts and returns similarity score
 
 ## Requirements
 
 - Python 3.6+
 - FFmpeg installed and available in system PATH
 - `ffmpeg-python` package
-- Tesseract OCR (optional but recommended)
-- `pytesseract` package
+- PaddleOCR (installation instructions below)
 
 ## Installation Instructions
 
@@ -79,16 +74,12 @@ The implementation consists of two main classes:
    - **Linux**:
      - Install via package manager: `sudo apt-get install ffmpeg`
 
-2. **Install Tesseract OCR**:
-   - **Windows**:
-     - Download from [UB-Mannheim Tesseract](https://github.com/UB-Mannheim/tesseract/wiki)
-     - Add Tesseract to system PATH
-   
-   - **macOS**:
-     - Install via Homebrew: `brew install tesseract`
-   
-   - **Linux**:
-     - Install via package manager: `sudo apt-get install tesseract-ocr`
+2. **Install PaddleOCR**:
+   - **Windows, macOS, Linux**:
+     - Install via pip:
+       ```powershell
+       pip install paddleocr
+       ```
 
 3. **Install Python Dependencies**:
    ```powershell
@@ -96,7 +87,7 @@ The implementation consists of two main classes:
    .\.venv\Scripts\Activate
    
    # Install required packages
-   pip install ffmpeg-python pytesseract opencv-python
+   pip install ffmpeg-python paddleocr opencv-python
    ```
 
 ## Usage Example

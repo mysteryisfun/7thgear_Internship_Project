@@ -1,16 +1,12 @@
-tensorflow==2.12.0
+tensorflow==2.10.0
 opencv-python==4.5.5.64
 ffmpeg-python==0.2.0
 scenedetect==0.6.4
-pytesseract==0.3.10
 Pillow==9.5.0
 numpy==1.26.4
 cdifflib==2.4.0
 spacy==3.7.2
-resnet==0.1
-# chartocr and bart are not available or not installable via pip, so they are commented out for now.
-# chartocr==1.0.0
-# bart==0.1.0
+paddleocr==2.6.0.1
 blip==0.1.0
 pydantic==1.10.14
 pydantic-core==2.14.4
