@@ -16,13 +16,29 @@ eg:python src\video_processing\main_processor.py data\faces_and_text.mp4 --outpu
 ### Data Storage:
 - Store input videos in the `data/` directory.
 - Output files will be saved in the specified `--output-dir`.
+- **Structured results** saved in organized analysis folders within `output/results/` directory.
+- **Optimized JSON format** with timestamped data and reduced file size.
+- **Summary reports** generated automatically for human-readable analysis.
+
+### Output Structure:
+```
+output/
+├── frames/              # All extracted frames
+├── keyframes/           # Scene change frames  
+└── results/             # Analysis results organized by video and timestamp
+    └── {video_name}_analysis_{timestamp}/
+        ├── {video_name}_analysis_{timestamp}.json  # Structured analysis data
+        └── {video_name}_analysis_{timestamp}.txt   # Human-readable summary
+```
 
 ## Purpose of Files in `video_processing` Directory
 - `main_processor.py`: Main pipeline for video processing and data extraction.
+- `output_manager.py`: Structured data storage and JSON export management.
+- `paddleocr_text_extractor.py`: PaddleOCR-based text extraction from frames.
+- `nlp_processing.py`: Advanced NLP processing with spaCy.
+- `frame_extractor.py`: FFmpeg-based frame extraction from videos.
+- `text_processor.py`: Text preprocessing and similarity detection.
 - `bert_processor.py`: Handles text summarization using Pegasus.
-- `ocr_processor.py`: Performs OCR on extracted frames.
-- `scene_detector.py`: Detects scene changes in videos.
-- `image_processor.py`: Processes images and diagrams from slides.
 
 ## Installation Requirements
 1. Install Python 3.9.

@@ -20,6 +20,7 @@ from src.video_processing.frame_extractor import FrameExtractor
 from src.video_processing.paddleocr_text_extractor import PaddleOCRTextExtractor
 from src.video_processing.text_processor import TextProcessor
 from src.video_processing.nlp_processing import NLPProcessor
+from src.video_processing.output_manager import OutputManager
 
 
 def process_video(
@@ -101,7 +102,37 @@ def process_video(
     for i, text in enumerate(nlp_processed_scene_texts):
         print(f"NLP Processed Scene Text {i+1}:\n{text}\n")
 
+    # Save structured results to JSON
+    print("Saving structured results...")
+    output_manager = OutputManager(output_dir)
+    
+    # Prepare processing parameters for metadata
+    processing_params = {
+        "fps": fps,
+        "similarity_threshold": similarity_threshold,
+        "use_paddleocr": use_paddleocr,
+        "tesseract_path": tesseract_path,
+        "nlp_processing": True,
+        "scene_detection_method": "text_similarity"
+    }
+    
+    # Save complete results
+    json_path = output_manager.save_processing_results(
+        video_path=video_path,
+        frame_data=frame_paths_with_timestamps,
+        scene_indices=scenes,
+        extracted_texts=extracted_texts,
+        processed_texts=nlp_processed_scene_texts,
+        processing_params=processing_params
+    )
+    
+    # Create summary report
+    summary_path = output_manager.create_summary_report(json_path)
+    
+    print(f"Results saved to: {json_path}")
+    print(f"Summary report: {summary_path}")
     print("Text processing complete.")
+    
     return frame_paths, scenes
 
 def main():
