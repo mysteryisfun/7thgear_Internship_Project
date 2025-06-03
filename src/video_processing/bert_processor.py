@@ -1,31 +1,42 @@
-from transformers import pipeline
+import os
+os.environ["TRANSFORMERS_BACKEND"] = "tensorflow"  # Force transformers to use TensorFlow
+from transformers import TFAutoModel, AutoTokenizer
+import tensorflow as tf
 
 class BERTProcessor:
     def __init__(self):
         """
-        Initialize the BERTProcessor with a pre-trained Pegasus model for summarization and context derivation.
+        Initialize the BERTProcessor with a pre-trained BERT base uncased model for semantic understanding.
         """
-        self.model = pipeline("summarization", model="google/pegasus-xsum")
+        self.tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+        self.model = TFAutoModel.from_pretrained("bert-base-uncased")
 
-    def correct_text(self, text: str) -> str:
+    def get_embeddings(self, text: str) -> tf.Tensor:
         """
-        Use the Pegasus model to analyze meeting slide information and provide context without losing any data or context.
+        Generate BERT embeddings for the input text.
 
         Args:
-            text: The input text extracted from meeting slides.
+            text: The input text to process.
 
         Returns:
-            The analyzed context, preserving all information and data.
+            Tensor containing the BERT embeddings.
         """
-        try:
-            # Prompt Pegasus to analyze and provide context for meeting slide information
-            prompt = (
-                "This is information extracted from the slides of a meeting. "
-                "Analyze and provide the context of what is happening, without losing any data or context: "
-                f"{text}"
-            )
-            result = self.model(prompt, max_length=60, min_length=20, truncation=True)
-            return result[0]['summary_text']
-        except Exception as e:
-            print(f"Error during Pegasus processing: {e}")
-            return text
+        inputs = self.tokenizer(text, return_tensors="tf", truncation=True, padding=True)
+        outputs = self.model(**inputs)
+        return outputs.last_hidden_state
+
+    def compute_similarity(self, text1: str, text2: str) -> float:
+        """
+        Compute cosine similarity between embeddings of two texts.
+
+        Args:
+            text1: First text input.
+            text2: Second text input.
+
+        Returns:
+            Cosine similarity score between the two texts.
+        """
+        embeddings1 = tf.reduce_mean(self.get_embeddings(text1), axis=1)
+        embeddings2 = tf.reduce_mean(self.get_embeddings(text2), axis=1)
+        similarity = tf.keras.losses.cosine_similarity(embeddings1, embeddings2)
+        return -similarity.numpy()[0]  # Convert to positive similarity score

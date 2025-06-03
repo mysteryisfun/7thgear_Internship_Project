@@ -211,13 +211,20 @@ class OutputManager:
         ]
         
         for scene in data['scenes']:
+            # Handle processed_text as dict (structured context) or string
+            processed_text = scene['processed_text']
+            if isinstance(processed_text, dict):
+                # Show a compact summary of key fields for the report
+                processed_text_str = ", ".join(f"{k}: {str(v)[:30]}" for k, v in processed_text.items() if v)
+            else:
+                processed_text_str = str(processed_text)
             summary_lines.extend([
                 f"",
                 f"Scene {scene['scene_number']}:",
                 f"  Time Range: {scene['timestamp_range']['start_seconds']:.2f}s - {scene['timestamp_range']['end_seconds']:.2f}s",
                 f"  Duration: {scene['timestamp_range']['duration_seconds']:.2f}s",
                 f"  Text Length: {scene['text_length']} characters",
-                f"  Processed Text: {scene['processed_text'][:100]}{'...' if len(scene['processed_text']) > 100 else ''}"
+                f"  Processed Text: {processed_text_str[:100]}{'...' if len(processed_text_str) > 100 else ''}"
             ])
         
         # Save summary report in the same analysis folder

@@ -1053,3 +1053,67 @@ For additional support, updates, or contribution guidelines, please refer to the
 **Last Updated**: May 25, 2025  
 **Total Lines of Documentation**: 1000+  
 **Comprehensive Coverage**: ✅ Complete
+
+---
+
+# [UPDATED] Scene Text Context Extraction Pipeline (June 2025)
+
+### Overview
+The pipeline now uses the Gemma LLM (via LM Studio API) for extracting meaningful context from scene text, replacing the previous BERT-based approach. The output is a structured JSON file per video, with comprehensive metadata, scene-level context, and a summary text file. The descriptive explanation from Gemma is always parsed and saved.
+
+### Key Implementation Changes
+- **Removed**: BERT-based context extraction logic.
+- **Added**: `GemmaContextExtractor` in `text_context_extraction.py` for LLM-based context extraction via HTTP.
+- **Updated**: `main_processor.py` to:
+    - Send NLP-processed scene text to Gemma and parse the JSON output.
+    - Save results in a structured JSON format with metadata, summary, and scenes.
+    - Always extract and save the "descriptive explanation" field from Gemma output.
+    - Generate a summary `.txt` file for each analysis.
+- **OutputManager**: No change in interface, but output structure is now always LLM-based.
+
+### Output File Structure
+```
+output/
+├── frames/              # All extracted frames
+├── keyframes/           # Scene change frames
+└── results/             # Analysis results organized by video and timestamp
+    └── {video_name}_analysis_{timestamp}/
+        ├── {video_name}_analysis_{timestamp}.json  # Structured analysis data
+        └── {video_name}_analysis_{timestamp}.txt   # Human-readable summary
+```
+
+### JSON Output Structure
+- **metadata**: Video file info, processing info, parameters, output info
+- **summary**: Scene and text statistics
+- **scenes**: List of scene objects, each with:
+    - `frame_id`, `frame_timestamp`, `scene_range`, `ocr_text`
+    - `text_model`, `model_endpoint`
+    - `topics`, `subtopics`, `entities`, `numerical_values`
+    - `descriptive explanation`, `tasks identified`
+    - `timestamp_range` (start, end, duration)
+
+#### Example Scene Entry
+```json
+{
+  "frame_id": "frame_00000",
+  "frame_timestamp": "0.0",
+  "scene_range": "0.0 - END",
+  "ocr_text": "...",
+  "text_model": "gemma-2-2b-it",
+  "model_endpoint": "http://localhost:1234",
+  "topics": ["..."],
+  "subtopics": ["..."],
+  "entities": {"persons": ["..."], "organizations": ["..."], "events": [], "dates": []},
+  "numerical_values": [],
+  "descriptive explanation": "...",
+  "tasks identified": ["..."],
+  "timestamp_range": {"start_seconds": 0.0, "end_seconds": 21.0, "duration_seconds": 21.0}
+}
+```
+
+### Integration & Testing
+- All processing is handled in `main_processor.py` and `text_context_extraction.py`.
+- Output is always in the new format; see `test_output/results/` for examples.
+- See README for updated run instructions.
+
+### [LEGACY] BERT-based context extraction is deprecated and removed.
