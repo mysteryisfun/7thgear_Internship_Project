@@ -1063,7 +1063,7 @@ The pipeline now uses the Gemma LLM (via LM Studio API) for extracting meaningfu
 
 ### Key Implementation Changes
 - **Removed**: BERT-based context extraction logic.
-- **Added**: `GemmaContextExtractor` in `text_context_extraction.py` for LLM-based context extraction via HTTP.
+- **Added**: `GemmaContextExtractor` in `gemma_2B_context_model.py` for LLM-based context extraction via HTTP.
 - **Updated**: `main_processor.py` to:
     - Send NLP-processed scene text to Gemma and parse the JSON output.
     - Save results in a structured JSON format with metadata, summary, and scenes.
@@ -1112,7 +1112,7 @@ output/
 ```
 
 ### Integration & Testing
-- All processing is handled in `main_processor.py` and `text_context_extraction.py`.
+- All processing is handled in `main_processor.py` and `gemma_2B_context_model.py`.
 - Output is always in the new format; see `test_output/results/` for examples.
 - See README for updated run instructions.
 

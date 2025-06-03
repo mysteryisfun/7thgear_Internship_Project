@@ -118,19 +118,7 @@ python src\video_processing\main_processor.py data\faces_and_text.mp4 --output-d
 5. Case normalization
 6. Noise filtering
 
-#### 5. `bert_processor.py`
-**Purpose**: Contextual analysis and summarization using Pegasus model
-
-**Key Features**:
-- Context derivation from meeting slide content
-- Information preservation during summarization
-- Transformers-based processing
-
-**Class**: `BERTProcessor`
-**Model**: `google/pegasus-xsum`
-**Method**: `correct_text(text)`: Analyze and contextualize meeting content
-
-#### 6. `text_processor.py`
+#### 5. `text_processor.py`
 **Purpose**: Basic text preprocessing and similarity detection
 
 **Key Features**:
@@ -294,3 +282,59 @@ foreach ($video in $videos) {
 ```
 
 This documentation provides a complete guide for understanding, running, and troubleshooting the current video processing implementation.
+
+## [UPDATED June 2025] Scene Text Context Extraction Pipeline
+
+### Major Pipeline Change
+- The pipeline now uses the **Gemma LLM (via LM Studio API)** for extracting meaningful context from scene text, replacing the previous BERT/Pegasus-based approach.
+- Scene-level context is extracted using the `GemmaContextExtractor` (see `src/video_processing/text_context_extraction.py`).
+- The output is a structured JSON file per video, with:
+    - **Comprehensive metadata**
+    - **Scene-level context** (Gemma fields: topics, subtopics, entities, numerical_values, descriptive explanation, tasks identified, timestamp_range, etc.)
+    - **Summary text file** for each analysis
+- The output directory and file structure remain unchanged, but the context extraction and scene data fields are now LLM-based.
+
+### Output File Structure
+```
+output/
+├── frames/              # All extracted frames
+├── keyframes/           # Scene change frames
+└── results/             # Analysis results organized by video and timestamp
+    └── {video_name}_analysis_{timestamp}/
+        ├── {video_name}_analysis_{timestamp}.json  # Structured analysis data
+        └── {video_name}_analysis_{timestamp}.txt   # Human-readable summary
+```
+
+### JSON Output Structure (Gemma-based)
+Each scene entry now includes:
+- `frame_id`, `frame_timestamp`, `scene_range`, `ocr_text`
+- `text_model`, `model_endpoint`
+- `topics`, `subtopics`, `entities`, `numerical_values`
+- `descriptive explanation`, `tasks identified`
+- `timestamp_range` (start, end, duration)
+
+#### Example Scene Entry
+```json
+{
+  "frame_id": "frame_00000",
+  "frame_timestamp": "0.0",
+  "scene_range": "0.0 - END",
+  "ocr_text": "...",
+  "text_model": "gemma-2-2b-it",
+  "model_endpoint": "http://localhost:1234",
+  "topics": ["..."],
+  "subtopics": ["..."],
+  "entities": {"persons": ["..."], "organizations": ["..."], "events": [], "dates": []},
+  "numerical_values": [],
+  "descriptive explanation": "...",
+  "tasks identified": ["..."],
+  "timestamp_range": {"start_seconds": 0.0, "end_seconds": 21.0, "duration_seconds": 21.0}
+}
+```
+
+### Usage and Integration
+- Run the pipeline as before using `main_processor.py` (see usage examples below).
+- All context extraction and scene data are now LLM-based and more descriptive.
+- See `docs/text_extraction&processing.md` for further details on the new output structure.
+
+### [LEGACY] BERT/Pegasus-based context extraction is deprecated and removed.
