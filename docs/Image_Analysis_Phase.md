@@ -1,197 +1,138 @@
-# Image Analysis Phase Execution Plan
+Absolutely. Below is a **detailed phase-by-phase development plan** for your frame analysis system based on your updated flowchart. It includes two image classifiers and downstream logic excluding the already completed text processing.
 
-This document details the execution plan for the Image Analysis Component of the Intelligent Data Extraction System, as outlined in the internship project updates. The component consists of three phases: **Image Detection**, **Image Comparison**, and **Image Analysis**. The goal is to identify, compare, and extract meaningful context from visual elements (e.g., images, charts, diagrams) within presentation slides from meeting videos, aligning with the project's aim to create actionable, timestamped summaries. Per the project requirements, YOLOv5 is used exclusively for detecting images and obtaining their bounding boxes in slides for comparison purposes, not for classification.
+---
 
-## Phase 1: Image Detection
+## 🔁 **PHASE 1: FRAME EXTRACTION FROM VIDEO**
 
-### Objective
-Identify visual elements (e.g., images, charts, diagrams) within slide frames and extract their bounding boxes for subsequent comparison and analysis.
+### **Objective:**
 
-### Approach
-- **Model Selection**: YOLOv5, a lightweight and efficient object detection model, is chosen for its speed and accuracy in detecting visual elements. YOLOv5 will not classify visuals (e.g., as "chart" or "photo") but will detect regions containing visual content and provide bounding box coordinates.
-- **Input**: Frames extracted from meeting videos at 1 frame per second (FPS), as established in the completed Video Processing Pipeline (using FFmpeg and OpenCV).
-- **Process**:
-  1. **Preprocessing**: Convert frames to a format suitable for YOLOv5 (e.g., RGB, resized to 640x640 for optimal performance).
-  2. **Detection**: Feed frames into YOLOv5 to detect regions containing visual elements. YOLOv5 outputs bounding box coordinates (x_min, y_min, x_max, y_max) for each detected visual.
-  3. **Storage**: Store bounding box coordinates along with frame timestamps and frame identifiers in a structured format (e.g., JSON) for downstream processing.
-- **Output**: A list of detected visual regions per frame, each with:
-  - Bounding box coordinates.
-  - Timestamp of the frame.
-  - Frame identifier (e.g., frame number or file path).
+Extract representative image frames from the recorded meeting video at a controlled interval (e.g., 1 frame per second) to feed into the pipeline.
 
-### Implementation Details
-- **YOLOv5 Setup**:
-  - Use a pre-trained YOLOv5 model (e.g., YOLOv5s for efficiency) from the Ultralytics repository.
-  - Fine-tune on a dataset of presentation slides (e.g., SlideShare dataset or custom annotated slides) to improve detection accuracy for slide-specific visuals.
-  - Configure YOLOv5 to detect a single class ("visual") to focus on identifying regions without classifying them.
-- **Preprocessing with OpenCV**:
-  - Convert frames to grayscale and apply Gaussian blur to reduce noise, as described in the development approach.
-  - Optionally, use edge detection (Canny) to enhance detection in cluttered slides.
-- **Storage Format**:
-  ```json
-  [
-    {
-      "frame_id": "frame_001",
-      "timestamp": "00:01.000",
-      "bounding_boxes": [
-        {"x_min": 100, "y_min": 150, "x_max": 300, "y_max": 400},
-        {"x_min": 500, "y_min": 200, "x_max": 700, "y_max": 450}
-      ]
-    },
-    ...
-  ]
-  ```
-- **Challenges**:
-  - **Cluttered Slides**: Slides with overlays or animations may confuse detection.
-  - **Solution**: Use temporal analysis (frame differencing) to focus on stable regions, as suggested in the development approach.
-  - **Low-Resolution Visuals**: Small or blurry visuals may be missed.
-  - **Solution**: Enhance images with OpenCV (e.g., sharpening) before detection.
-- **Why It Matters**: Accurate detection of visual regions ensures only relevant content is processed, optimizing resource usage and aligning with the project's efficiency goals.
+### **Steps:**
 
-## Phase 2: Image Comparison
+1. **Select suitable FPS** for frame extraction (e.g., 1fps or 0.5fps) to balance performance and coverage.
+2. **Read video stream** and extract frames using a consistent interval.
+3. **Save or temporarily store frames** with timestamps or indices for traceability in the pipeline.
+4. **Pass each frame** to the first classifier for further processing.
 
-### Objective
-Avoid duplicate processing by identifying unchanged visuals across slide frames using perceptual hashing.
+---
 
-### Approach
-- **Technique**: Use perceptual hashing (pHash) to generate a hash for each detected visual, enabling efficient comparison to detect duplicates.
-- **Input**: Bounding box regions from Phase 1, cropped from the original frames.
-- **Process**:
-  1. **Cropping**: Extract the visual region from the frame using bounding box coordinates.
-  2. **Hash Computation**: Compute the pHash for each cropped visual using a library like `imagehash`.
-  3. **Cache Mechanism**: Store hashes in an in-memory cache (e.g., Redis) with frame timestamps for quick comparison.
-  4. **Comparison**: Compare the pHash of the current visual with hashes from the previous frame’s visuals. If the Hamming distance is below a threshold (e.g., 5), mark the visual as a duplicate and skip further analysis.
-  5. **Output**: Flag unique visuals (non-duplicates) for analysis in Phase 3, along with their bounding box coordinates and timestamps.
-- **Output**: A filtered list of unique visuals with:
-  - Bounding box coordinates.
-  - Timestamp and frame identifier.
-  - pHash value (for reference).
+## 🧠 **PHASE 2: CLASSIFIER 1 – PEOPLE VIEW vs PRESENTATION VIEW**
 
-### Implementation Details
-- **pHash Computation**:
-  - Use the `imagehash` Python library to compute perceptual hashes.
-  - Resize cropped visuals to a fixed size (e.g., 64x64) for consistent hashing.
-  - Example:
-    ```python
-    from PIL import Image
-    import imagehash
+### **Objective:**
 
-    def compute_phash(image_path):
-        img = Image.open(image_path)
-        return imagehash.phash(img)
-    ```
-- **Cache Setup**:
-  - Use Redis for in-memory storage of hashes.
-  - Structure: Key = `frame_id:visual_index`, Value = `pHash`.
-  - Example:
-    ```python
-    import redis
+Classify each extracted frame as either:
 
-    redis_client = redis.Redis(host='localhost', port=6379, db=0)
-    redis_client.set(f"frame_001:visual_1", str(phash))
-    ```
-- **Comparison Logic**:
-  - Compute Hamming distance between pHashes:
-    ```python
-    def is_duplicate(hash1, hash2, threshold=5):
-        return hash1 - hash2 <= threshold
-    ```
-  - If duplicate, skip the visual; otherwise, pass to Phase 3.
-- **Challenges**:
-  - **Minor Visual Changes**: Small changes (e.g., text overlays on charts) may result in different hashes.
-  - **Solution**: Adjust the Hamming distance threshold based on testing to balance sensitivity and efficiency.
-  - **Cache Scalability**: Large meetings with many visuals may strain memory.
-  - **Solution**: Implement a sliding window cache (e.g., store hashes for the last 10 frames).
-- **Why It Matters**: Skipping duplicate visuals reduces computational overhead, aligning with the project’s resource efficiency goals.
+* A video meeting grid with people
+* A presentation/slide or screen-share content
 
-## Phase 3: Image Analysis
+### **Steps:**
 
-### Objective
-Extract meaningful context from new or changed visuals (e.g., "Pie chart: 50% R&D") to integrate with text summaries.
+1. **Define label schema** for training: `["people", "presentation"]`.
+2. **Curate small but diverse dataset** of labeled frames showing people vs presentation content.
+3. **Select a lightweight pre-trained model** (e.g., MobileNetV2, ResNet18, or EfficientNet-B0).
+4. **Fine-tune final classification layers** on the labeled dataset using transfer learning.
+5. **Deploy model locally** and perform inference on each frame.
+6. **Route output:**
 
-### Approach
-- **Options for Analysis**:
-  1. **API Services**: Use Vision APIs (e.g., GPT-4 or Google Gemini) for rapid prototyping and testing due to their ease of integration.
-  2. **Self-Deployed Models**: Transition to models like DeepSeek VL2 or Gemma for production to ensure scalability and cost efficiency.
-- **Decision**: Start with GPT-4 API for initial testing to validate the pipeline quickly, then evaluate self-hosted models for production.
-- **Input**: Cropped unique visuals from Phase 2.
-- **Process**:
-  1. **API Integration**: Send cropped visuals to the GPT-4 Vision API for context extraction.
-  2. **Context Extraction**: Generate descriptive text (e.g., “Bar chart showing Q1 sales: 60% domestic, 40% international”).
-  3. **Alignment**: Associate extracted context with timestamps from the original frame.
-  4. **Storage**: Store context in a structured format alongside text data for integration.
-- **Output**: Structured data combining visual context, bounding box coordinates, and timestamps:
-  ```json
-  [
-    {
-      "frame_id": "frame_001",
-      "timestamp": "00:01.000",
-      "bounding_box": {"x_min": 100, "y_min": 150, "x_max": 300, "y_max": 400},
-      "context": "Pie chart: 50% R&D, 30% Marketing, 20% Operations"
-    },
-    ...
-  ]
-  ```
+   * If classified as `people`: discard or tag and store metadata (e.g., "human-focused, no slide").
+   * If classified as `presentation`: forward the frame for further visual/textual analysis.
 
-### Implementation Details
-- **GPT-4 API Integration**:
-  - Use the OpenAI API client:
-    ```python
-    from openai import OpenAI
+---
 
-    client = OpenAI(api_key="your_api_key")
-    def analyze_image(image_path):
-        with open(image_path, "rb") as image_file:
-            response = client.chat.completions.create(
-                model="gpt-4-vision-preview",
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": "Describe the visual content."},
-                            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64.encodebytes(image_file.read()).decode('utf-8')}"}}
-                        ]
-                    }
-                ]
-            )
-        return response.choices[0].message.content
-    ```
-  - Input: Base64-encoded cropped visual.
-  - Output: Descriptive text.
-- **Self-Hosted Model Plan**:
-  - Fine-tune DeepSeek VL2 on a custom dataset (e.g., 200 annotated slides from internal meetings).
-  - Deploy on cloud infrastructure (e.g., AWS EC2 with GPU support).
-  - Optimize for latency using batch processing.
-- **Challenges**:
-  - **Complex Visuals**: Charts with overlapping text or low contrast may confuse APIs.
-  - **Solution**: Preprocess visuals with OpenCV (e.g., contrast enhancement) and fine-tune models on diverse slide data.
-  - **API Costs**: High usage of GPT-4 may be expensive during testing.
-  - **Solution**: Limit API calls to unique visuals and transition to self-hosted models early.
-- **Why It Matters**: Extracting meaningful context from visuals ensures the system captures critical insights, enhancing the quality of meeting summaries.
+## 🧹 **PHASE 3: DISCARDING DUPLICATE FRAMES**
 
-## Integration with Existing Pipeline
-- **Input**: Frames from the Video Processing Pipeline (1 FPS, timestamped).
-- **Flow**:
-  1. **Detection**: YOLOv5 identifies visual regions and outputs bounding boxes.
-  2. **Comparison**: pHash filters out duplicates, passing unique visuals to analysis.
-  3. **Analysis**: GPT-4 API (or self-hosted model) generates context for unique visuals.
-  4. **Output Integration**: Combine visual context with extracted text (from PaddleOCR) using timestamps for alignment, feeding into the summarization module (e.g., BART).
-- **Storage**: Use a unified JSON structure to store text and visual data, ensuring compatibility with the Information Merging module.
+### **Objective:**
 
-## Testing and Validation
-- **Datasets**:
-  - **SlideShare Dataset**: Test detection and analysis on diverse public slides.
-  - **Custom Dataset**: Annotate 200 internal meeting slides to validate performance on real-world data.
-- **Testing Strategies**:
-  - **Unit Testing**: Verify YOLOv5 bounding box accuracy (>90% IoU with ground truth).
-  - **Integration Testing**: Ensure end-to-end flow (frame → bounding box → hash → context) produces accurate outputs.
-  - **Performance Testing**: Measure latency for processing 1,000 slides/hour, targeting <5% latency increase under load.
-- **Tools**: Use pytest for unit tests and GitHub Actions for CI/CD.
+Eliminate redundant frames by checking visual and/or textual similarity. Only retain distinct content-relevant frames to optimize processing.
 
-## Scalability Considerations
-- **Batch Processing**: Process multiple visuals in parallel to reduce latency.
-- **Caching**: Use Redis to store pHashes and avoid recomputation.
-- **Cloud Deployment**: Deploy YOLOv5 and self-hosted models on scalable cloud infrastructure (e.g., AWS).
+### **Steps:**
 
-## Why This Component Matters
-The Image Analysis Component is critical to capturing the full context of meeting slides, as visuals often convey key insights (e.g., charts, diagrams). By using YOLOv5 for precise bounding box detection, pHash for efficient comparison, and Vision APIs for context extraction, this pipeline ensures resource efficiency and high-quality outputs. The approach aligns with the project’s goals of automation, scalability, and actionable insights, paving the way for seamless integration with text processing and summarization modules.
+1. **Compare consecutive frames using visual hash algorithms** (e.g., perceptual hash `phash`).
+2. **Define threshold for image similarity** to flag duplicates.
+3. **Use previously extracted text (OCR)** and compute textual similarity (e.g., fuzzy match or embedding cosine similarity).
+4. **Keep a frame only if**:
+
+   * It is visually different from previous frame **or**
+   * Its OCR-extracted text is significantly different from prior frames
+5. **Maintain a history buffer** of recent unique frames for reference.
+
+---
+
+## 🧠 **PHASE 4: CLASSIFIER 2 – TEXT-ONLY SLIDE vs VISUAL DIAGRAM SLIDE**
+
+### **Objective:**
+
+Within presentation frames, identify whether a slide contains **only textual content** or **text + graphical elements (charts, diagrams, illustrations)**.
+
+### **Steps:**
+
+1. **Define label schema**: `["text_only", "image_diagram"]`.
+2. **Prepare dataset** of presentation slide images (screenshots of slides) with these two labels.
+3. **Choose a small, efficient model** suited for distinguishing visuals (e.g., MobileNetV3-Small, SqueezeNet, TinyViT).
+4. **Train on the dataset** or fine-tune on pre-trained features.
+5. **Classify each presentation frame**:
+
+   * `text_only` → treated as textual context
+   * `image_diagram` → treated as mixed visual context
+6. **Store label along with frame** metadata for further processing.
+
+---
+
+## 🧠 **PHASE 5: CONTEXT GENERATION (ONLY FOR PRESENTATION FRAMES)**
+
+### **Objective:**
+
+Generate **descriptive contextual information** (not a summary) for meaningful presentation frames to be used in downstream tagging or analytics.
+
+### **Steps:**
+
+1. **Feed `text_only` frames' extracted text** to a lightweight language model or embedding model like:
+
+   * `MiniLM-L6-v2` (semantic encoding of content)
+   * BERT or DistilBERT (if deeper semantic roles are needed)
+2. **Feed `image_diagram` frames (image + text)** to a multimodal model if needed (like TinyLLaVA or BLIP) for image + text context extraction.
+3. **Generate structured output**:
+
+   * Descriptive tags or explanation of what the slide/frame conveys
+   * Structured categories or themes (e.g., “financial chart about company revenue”, “product overview bullet points”)
+4. **Store output with timestamp/frame index** in a central metadata store (e.g., JSON or database).
+
+---
+
+## 📤 **PHASE 6: FINAL FRAME TAGGING AND OUTPUT GENERATION**
+
+### **Objective:**
+
+Compile and export all analyzed and annotated frames with their contextual labels and structured data.
+
+### **Steps:**
+
+1. **Collect all processed frames** with:
+
+   * Frame index/timestamp
+   * Classification labels (people/presentation, text-only/image-diagram)
+   * Contextual descriptive output
+2. **Format into a structured output format**:
+
+   * JSON
+   * CSV
+   * API response
+3. **Send for tagging, display, or storage**, enabling analytics or review.
+
+---
+
+## ✅ Final Output Per Frame Will Contain:
+
+| Field                 | Description                                                      |
+| --------------------- | ---------------------------------------------------------------- |
+| `frame_id`            | Unique ID or timestamp                                           |
+| `classification`      | "people" / "presentation"                                        |
+| `presentation_type`   | "text\_only" / "image\_diagram" (if applicable)                  |
+| `ocr_text`            | Extracted text (if available)                                    |
+| `descriptive_context` | Rich description of content (from LLM or small generative model) |
+| `tags/themes`         | Optional keywords extracted                                      |
+
+---
+
+Let me know if you’d like this in a template format or flowchart notation next.

@@ -3,4 +3,4 @@ data/
 output/
 test_output
 src/__pycache__/
-src/video_processing/__pycache__/
+src/text_processing/__pycache__/

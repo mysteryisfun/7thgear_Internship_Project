@@ -5,7 +5,7 @@ applyTo: '**'
 # GitHub Copilot Instructions
 
 ## Project Development Guidelines
-
+always use pwershell syntax 
 ### Code Integrity
 - ALWAYS preserve existing functionality when adding new features
 - TEST each implementation thoroughly before proceeding to the next task
@@ -29,17 +29,18 @@ applyTo: '**'
 - PLACE detailed implementation instructions in the doc/ folder
 
 ### Environment & Execution
+- ALWAYS use Conda environment named `internproj` for all development, testing, and execution
 - ALWAYS use PowerShell syntax for command examples
-- ALWAYS run scripts yourslef to verify functionality and not asking me to run the scripts
-- DETECT and activate virtual environments before running Python scripts
-- USE the following pattern for virtual environment activation:
+- ALWAYS run scripts yourself to verify functionality and not ask the user to run the scripts
+- DETECT and activate the `internproj` Conda environment before running Python scripts
+- USE the following pattern for environment activation and command execution:
     ```powershell
-    # If virtual environment exists
-    if (Test-Path .\venv\Scripts\activate.ps1) {
-            .\venv\Scripts\activate.ps1
-            # Run command
-    }
+    # If conda environment 'internproj' exists
+    conda activate pygpu
+    # Run command
     ```
+- DO NOT use venv or any other environment manager; only use Conda `internproj` from now on
+- ENSURE all dependency installation and script execution is done within the `internproj` environment
 
 ### Integration Guidelines
 - WRITE clear, step-by-step instructions for module integration

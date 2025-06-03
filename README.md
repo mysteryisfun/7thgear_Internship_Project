@@ -1,4 +1,20 @@
 # Intelligent Data Extraction System
+
+## Environment Setup (Recommended)
+Before running the project, set up your environment and install dependencies using Conda for best compatibility:
+
+```powershell
+# Create and activate a new Conda environment (Python 3.10 recommended)
+conda create -n py310 python=3.10
+conda activate py310
+
+# (Optional, for GPU support) Install CUDA and cuDNN
+conda install -c conda-forge cudatoolkit=11.2 cudnn=8.1.0
+
+# Install all project dependencies using requirements.txt
+pip install -r requirements.txt
+```
+
 ## Running the Project
 To run the project, use the following command:
 ```bash
@@ -41,7 +57,7 @@ output/
 - `bert_processor.py`: Handles text summarization using Pegasus.
 
 ## Installation Requirements
-1. Install Python 3.9.
+1. Install Python 3.9 or 3.10.
 2. Install FFmpeg:
    - On Ubuntu: `sudo apt install ffmpeg`
    - On Windows: Download from [FFmpeg.org](https://ffmpeg.org/).
