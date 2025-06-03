@@ -16,11 +16,11 @@ from difflib import SequenceMatcher
 # Add src directory to Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
-from src.video_processing.frame_extractor import FrameExtractor
-from src.video_processing.paddleocr_text_extractor import PaddleOCRTextExtractor
-from src.video_processing.enhanced_text_processor import EnhancedTextProcessor
-from src.video_processing.output_manager import OutputManager
-from src.video_processing.gemma_2B_context_model import GemmaContextExtractor
+from src.text_processing.frame_extractor import FrameExtractor
+from src.text_processing.paddleocr_text_extractor import PaddleOCRTextExtractor
+from src.text_processing.enhanced_text_processor import EnhancedTextProcessor
+from src.text_processing.output_manager import OutputManager
+from src.text_processing.gemma_2B_context_model import GemmaContextExtractor
 
 
 def process_video(

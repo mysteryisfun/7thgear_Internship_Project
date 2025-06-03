@@ -10,8 +10,8 @@ from pathlib import Path
 # Add src directory to Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
 
-from src.video_processing.frame_extractor import FrameExtractor
-from src.video_processing.paddleocr_text_extractor import PaddleOCRTextExtractor
+from src.text_processing.frame_extractor import FrameExtractor
+from src.text_processing.paddleocr_text_extractor import PaddleOCRTextExtractor
 
 def test_basic_pipeline():
     """Test the basic video processing pipeline."""

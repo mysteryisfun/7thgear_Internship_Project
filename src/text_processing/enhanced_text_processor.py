@@ -4,7 +4,7 @@ from collections import Counter
 import nltk
 from nltk.tokenize import sent_tokenize, word_tokenize
 from nltk.corpus import stopwords
-from src.video_processing.bert_processor import BERTProcessor
+from src.text_processing.bert_processor import BERTProcessor
 
 nltk.download('punkt', quiet=True)
 nltk.download('stopwords', quiet=True)

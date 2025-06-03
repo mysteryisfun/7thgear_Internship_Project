@@ -1,5 +1,5 @@
 import unittest
-from src.video_processing.text_context_extraction import GemmaContextExtractor
+from src.text_processing.text_context_extraction import GemmaContextExtractor
 import os
 
 class TestGemmaContextExtractor(unittest.TestCase):

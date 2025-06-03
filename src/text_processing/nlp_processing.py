@@ -2,7 +2,7 @@ import re
 from typing import List
 import wordninja
 from autocorrect import Speller
-from src.video_processing.bert_processor import BERTProcessor
+from src.text_processing.bert_processor import BERTProcessor
 
 class NLPProcessor:
     def __init__(self):

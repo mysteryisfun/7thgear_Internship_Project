@@ -629,7 +629,7 @@ foreach ($setting in $settings) {
 
 #### Programmatic Result Access
 ```python
-from src.video_processing.output_manager import OutputManager
+from src.text_processing.output_manager import OutputManager
 import json
 
 # Initialize output manager

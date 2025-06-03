@@ -2,9 +2,9 @@
 ## Running the Project
 To run the project, use the following command:
 ```bash
-python src/video_processing/main_processor.py <input_video_path> --output-dir <output_directory> --fps <frames_per_second> --similarity-threshold <threshold> --use-paddleocr
+python src/text_processing/main_processor.py <input_video_path> --output-dir <output_directory> --fps <frames_per_second> --similarity-threshold <threshold> --use-paddleocr
 ```
-eg:python src\video_processing\main_processor.py data\faces_and_text.mp4 --output-dir output --fps 1.0 --similarity-threshold 0.8 --use-paddleocr
+eg:python src\text_processing\main_processor.py data\faces_and_text.mp4 --output-dir output --fps 1.0 --similarity-threshold 0.8 --use-paddleocr
 
 ### Arguments:
 - `<input_video_path>`: Path to the input video file.
