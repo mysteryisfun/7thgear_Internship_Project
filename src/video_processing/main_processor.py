@@ -105,7 +105,7 @@ def process_video(
     # Save structured results to JSON
     print("Saving structured results...")
     output_manager = OutputManager(output_dir)
-    
+
     # Prepare processing parameters for metadata
     processing_params = {
         "fps": fps,
@@ -115,7 +115,7 @@ def process_video(
         "nlp_processing": True,
         "scene_detection_method": "text_similarity"
     }
-    
+
     # Save complete results
     json_path = output_manager.save_processing_results(
         video_path=video_path,
@@ -125,14 +125,14 @@ def process_video(
         processed_texts=nlp_processed_scene_texts,
         processing_params=processing_params
     )
-    
+
     # Create summary report
     summary_path = output_manager.create_summary_report(json_path)
-    
+
     print(f"Results saved to: {json_path}")
     print(f"Summary report: {summary_path}")
     print("Text processing complete.")
-    
+
     return frame_paths, scenes
 
 def main():
