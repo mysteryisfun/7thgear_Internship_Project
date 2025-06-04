@@ -19,6 +19,7 @@ This document provides a complete guide to the text extraction and video process
 13. [Performance Characteristics](#performance-characteristics)
 14. [Troubleshooting](#troubleshooting)
 15. [Future Enhancements](#future-enhancements)
+16. [NEW June 2025 Image Classification Module (Classifier 1)](#new-june-2025-image-classification-module-classifier-1)
 
 ## Overview
 
@@ -1117,3 +1118,33 @@ output/
 - See README for updated run instructions.
 
 ### [LEGACY] BERT-based context extraction is deprecated and removed.
+
+## [NEW June 2025] Image Classification Module (Classifier 1)
+
+A new image classification module has been implemented for binary classification of frames as either "people" or "presentation". This module is designed for integration with the text extraction pipeline and scene analysis workflows.
+
+### Features
+- Two model options: Custom CNN and EfficientNetV2B0 (transfer learning)
+- Robust training, saving, and evaluation scripts
+- Jupyter notebook for direct model comparison (accuracy, precision, loss, time, size)
+- Models saved in both H5 and SavedModel formats for compatibility
+
+### Key Files
+- `src/image_processing/classifier1_models/custom_cnn_classifier.py`
+- `src/image_processing/classifier1_models/efficientnet_functional.py`
+- `src/image_processing/classifier1_models/test_custom_cnn_classifier_eval.ipynb`
+- `src/image_processing/classifier1_models/custom_cnn_classifier_model.h5`
+- `src/image_processing/classifier1_models/efficientnet_functional_model.h5`
+- `src/image_processing/classifier1_models/efficientnet_savedmodel/`
+
+### Usage
+- Train models using the provided scripts (see execution_guide.md)
+- Evaluate and compare models in the Jupyter notebook
+- Integrate the best-performing model into the main video/text pipeline for frame-level classification
+
+### Evaluation Workflow
+- Both models are trained and evaluated on the same validation set
+- Metrics reported: accuracy, precision, loss, prediction time, model size
+- Results are summarized in a comparison table in the notebook
+
+See `docs/Image analysis classifier 1.md` for full implementation details and integration notes.

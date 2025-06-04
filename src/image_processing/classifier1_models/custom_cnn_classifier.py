@@ -96,7 +96,7 @@ def train_model(data_dir, save_path=MODEL_PATH):
     )
     model = build_model()
     cb = [
-        callbacks.EarlyStopping(patience=4, restore_best_weights=True),
+        #callbacks.EarlyStopping(patience=4, restore_best_weights=True),
         callbacks.ReduceLROnPlateau(patience=2, factor=0.5)
     ]
     model.fit(

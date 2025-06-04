@@ -30,6 +30,25 @@ This document provides a comprehensive guide to the current implementation statu
 - **Model**: `google/pegasus-xsum`
 - **Purpose**: Context analysis for meeting slide information
 
+#### 4. Image Classification Module (Classifier 1)
+- **Status**: ✅ Implemented and Evaluated (June 2025)
+- **Location**: `src/image_processing/classifier1_models/`
+- **Key Features**:
+  - Custom CNN and EfficientNetV2B0-based classifiers for binary image classification (people vs. presentation)
+  - Training and evaluation scripts with robust serialization and reproducibility
+  - Jupyter notebook for side-by-side model comparison (accuracy, precision, loss, time, size)
+  - Models saved in both H5 and SavedModel formats
+- **Key Files**:
+  - `custom_cnn_classifier.py` (custom CNN, H5 model)
+  - `efficientnet_functional.py` (EfficientNetV2B0, H5 & SavedModel)
+  - `test_custom_cnn_classifier_eval.ipynb` (evaluation & comparison)
+  - `custom_cnn_classifier_model.h5`, `efficientnet_functional_model.h5`, `efficientnet_savedmodel/`
+- **Usage**:
+  - Train: `python src/image_processing/classifier1_models/custom_cnn_classifier.py --train`
+  - Train: `python src/image_processing/classifier1_models/efficientnet_functional.py --train`
+  - Evaluate: `jupyter notebook src/image_processing/classifier1_models/test_custom_cnn_classifier_eval.ipynb`
+- **Integration**: Models can be imported for downstream prediction in the main pipeline.
+
 ## File Descriptions and Usage
 
 ### Main Processing Files
