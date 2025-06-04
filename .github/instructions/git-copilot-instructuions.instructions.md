@@ -29,18 +29,18 @@ always use pwershell syntax
 - PLACE detailed implementation instructions in the doc/ folder
 
 ### Environment & Execution
-- ALWAYS use Conda environment named `internproj` for all development, testing, and execution
+- ALWAYS use Conda environment named `pygpu` for all development, testing, and execution
 - ALWAYS use PowerShell syntax for command examples
 - ALWAYS run scripts yourself to verify functionality and not ask the user to run the scripts
-- DETECT and activate the `internproj` Conda environment before running Python scripts
+- DETECT and activate the `pygpu` Conda environment before running Python scripts
 - USE the following pattern for environment activation and command execution:
     ```powershell
-    # If conda environment 'internproj' exists
+    # If conda environment 'pygpu' exists
     conda activate pygpu
     # Run command
     ```
-- DO NOT use venv or any other environment manager; only use Conda `internproj` from now on
-- ENSURE all dependency installation and script execution is done within the `internproj` environment
+- DO NOT use venv or any other environment manager; only use Conda `pygpu` from now on
+- ENSURE all dependency installation and script execution is done within the `pygpu` environment
 
 ### Integration Guidelines
 - WRITE clear, step-by-step instructions for module integration

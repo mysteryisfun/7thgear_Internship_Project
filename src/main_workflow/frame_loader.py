@@ -5,7 +5,7 @@ Loads video frames one at a time at 1 FPS, yielding each frame for processing.
 Does not load all frames into memory. Designed for stepwise/parallel workflows.
 
 Usage Example (PowerShell):
-    conda activate internproj
+    conda activate pygpu
     python -c "from src.main_workflow.frame_loader import frame_generator; for idx, frame, ts in frame_generator('data/video.mp4'): print(idx, ts)"
 """
 

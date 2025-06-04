@@ -1,4 +1,4 @@
-name: internproj
+name: pygpu
 channels:
   - conda-forge
   - defaults

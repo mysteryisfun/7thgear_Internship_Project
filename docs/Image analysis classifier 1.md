@@ -32,16 +32,16 @@ This document describes the implementation, usage, and evaluation of the image c
 
 ## Usage
 
-### Training (PowerShell, in `internproj` conda env)
+### Training (PowerShell, in `pygpu` conda env)
 ```powershell
-conda activate internproj
+conda activate pygpu
 python src/image_processing/classifier1_models/custom_cnn_classifier.py --train
 python src/image_processing/classifier1_models/efficientnet_functional.py --train
 ```
 
 ### Evaluation (Jupyter Notebook)
 ```powershell
-conda activate internproj
+conda activate pygpu
 jupyter notebook src/image_processing/classifier1_models/test_custom_cnn_classifier_eval.ipynb
 ```
 
