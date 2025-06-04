@@ -18,6 +18,7 @@ from tensorflow.keras import layers, models, optimizers, callbacks
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.applications import EfficientNetV2B0
 from tensorflow.keras.applications.efficientnet_v2 import preprocess_input
+import cv2  # Added for frame prediction
 
 MODEL_PATH = os.path.join(os.path.dirname(__file__), 'efficientnet_functional_model.h5')
 SAVEDMODEL_PATH = os.path.join(os.path.dirname(__file__), 'efficientnet_functional_savedmodel')
@@ -147,6 +148,40 @@ def predict_image_class(image_path, model_path=MODEL_PATH):
     idx = np.argmax(preds[0])
     
     return CLASS_NAMES[idx], float(preds[0][idx])
+
+
+def predict_frame_class(model, frame: np.ndarray):
+    """
+    Predicts the class ('people' or 'presentation') for a single frame (NumPy array).
+    Returns the predicted class label and probability.
+    
+    Args:
+        model: Loaded Keras model
+        frame: NumPy array (BGR or RGB)
+    
+    Returns:
+        tuple: (class_label, probability)
+    """
+    img = cv2.resize(frame, IMG_SIZE)
+    if img.shape[2] == 4:
+        img = img[:, :, :3]  # Remove alpha if present
+    img = img[..., ::-1]  # Convert BGR to RGB if needed
+    x = preprocess_input(img.astype(np.float32))
+    x = np.expand_dims(x, axis=0)
+    preds = model.predict(x)
+    idx = np.argmax(preds[0])
+    return CLASS_NAMES[idx], float(preds[0][idx])
+
+
+def load_model(model_path=MODEL_PATH):
+    """
+    Loads the trained EfficientNet model from disk.
+    Args:
+        model_path: Path to the saved model (H5 or SavedModel directory)
+    Returns:
+        Loaded Keras model
+    """
+    return tf.keras.models.load_model(model_path)
 
 
 if __name__ == "__main__":

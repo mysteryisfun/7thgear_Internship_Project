@@ -47,9 +47,9 @@ jupyter notebook src/image_processing/classifier1_models/test_custom_cnn_classif
 
 ## Model Comparison Example Output
 | Model                   | Loss   | Accuracy | Precision | Time(s) | Size(MB) |
-|-------------------------|--------|----------|-----------|---------|----------|
-| Custom CNN              |0.2487     0.9825     0.9830       4.38      78
-| EfficientNet Functional | 0.0939     0.9864     0.9867      13.90      23
+|-------------------------|--------|----------|-----------|---------|------
+| Custom CNN              |0.2487     0.9825     0.9830       0.06s      78
+| EfficientNet Functional | 0.0939     0.9864     0.9867      0.06-0.1   23
 
 *Values are for illustration; see notebook for actual results.*
 

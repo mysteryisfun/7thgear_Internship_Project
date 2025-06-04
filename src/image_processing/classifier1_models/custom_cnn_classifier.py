@@ -17,6 +17,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.keras import layers, models, optimizers, callbacks
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
+import cv2  # Added import for cv2
 
 # Optional: Enable mixed precision for memory savings (uncomment if needed)
 # from tensorflow.keras import mixed_precision
@@ -122,6 +123,27 @@ def predict_image_class(image_path, model_path=MODEL_PATH):
     model = load_model(model_path)
     img = tf.keras.utils.load_img(image_path, target_size=IMG_SIZE)
     x = tf.keras.utils.img_to_array(img) / 255.0
+    x = np.expand_dims(x, axis=0)
+    preds = model.predict(x)
+    idx = np.argmax(preds[0])
+    return CLASS_NAMES[idx], float(preds[0][idx])
+
+
+def predict_frame_class(model, frame: np.ndarray):
+    """
+    Predicts the class ('people' or 'presentation') for a single frame (NumPy array).
+    Returns the predicted class label and probability.
+    Args:
+        model: Loaded Keras model
+        frame: NumPy array (BGR or RGB)
+    Returns:
+        tuple: (class_label, probability)
+    """
+    img = cv2.resize(frame, IMG_SIZE)
+    if img.shape[2] == 4:
+        img = img[:, :, :3]  # Remove alpha if present
+    img = img[..., ::-1]  # Convert BGR to RGB if needed
+    x = img.astype(np.float32) / 255.0
     x = np.expand_dims(x, axis=0)
     preds = model.predict(x)
     idx = np.argmax(preds[0])

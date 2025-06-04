@@ -1,5 +1,7 @@
 import os
-os.environ["TRANSFORMERS_BACKEND"] = "tensorflow"  # Force transformers to use TensorFlow
+os.environ["USE_TF"]= "1"
+os.environ["TRANSFORMERS_NO_TORCH"] = "1"
+os.environ["TRANSFORMERS_BACKEND"] = "tensorflow"
 from transformers import TFAutoModel, AutoTokenizer
 import tensorflow as tf
 
@@ -7,6 +9,7 @@ class BERTProcessor:
     def __init__(self):
         """
         Initialize the BERTProcessor with a pre-trained BERT base uncased model for semantic understanding.
+        Uses only TensorFlow backend.
         """
         self.tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
         self.model = TFAutoModel.from_pretrained("bert-base-uncased")

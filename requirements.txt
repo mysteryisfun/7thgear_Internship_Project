@@ -19,6 +19,11 @@ dependencies:
   - pip:
       - ffmpeg-python==0.2.0
       - scenedetect==0.6.4
+      - paddlepaddle==3.0.0
+      - nltk==3.9.1
+      - transformers==4.37.2
+      - huggingface-hub==0.20.3
+      - filelock==3.10.0
       - paddleocr==2.6.0.1
       - blip==0.1.0
       - pydantic-core==2.14.4
