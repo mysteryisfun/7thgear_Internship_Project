@@ -39,6 +39,17 @@ def main(video_path: str, model_type: str, fps: float = 1.0):
     prev_ocr_text = None
     frame_results = []
     start_time = time.time()
+    output_dir = os.path.join("output", "main_pipeline_res")
+    os.makedirs(output_dir, exist_ok=True)
+    video_name = os.path.splitext(os.path.basename(video_path))[0]
+    timestamp_str = time.strftime("%Y%m%d_%H%M%S")
+    analysis_folder = f"{video_name}_image_analysis_{timestamp_str}"
+    analysis_dir = os.path.join(output_dir, analysis_folder)
+    images_dir = os.path.join(analysis_dir, "images")
+    os.makedirs(images_dir, exist_ok=True)
+    json_filename = f"{video_name}_image_analysis_{timestamp_str}.json"
+    json_path = os.path.join(analysis_dir, json_filename)
+
     for idx, frame, ts in frame_generator(video_path, fps=fps):
         start_pred = time.perf_counter()
         label, prob = classifier(model, frame)
@@ -72,7 +83,10 @@ def main(video_path: str, model_type: str, fps: float = 1.0):
             if is_img_unique:
                 frame_entry["duplicate_status"] = "unique_image"
                 frame_entry["processing_type"] = "image_processing"
-                print(f"  UNIQUE IMAGE (phash diff: {phash_diff}) -> send to image processing")
+                print(f"  UNIQUE IMAGE (phash diff: {phash_diff}) -> send to image processing and save image.")
+                img_path = os.path.join(images_dir, f"frame_{idx:05d}.jpg")
+                cv2.imwrite(img_path, frame)
+                print(f"    Saved unique presentation frame: {img_path}")
             elif is_text_unique:
                 frame_entry["duplicate_status"] = "unique_text"
                 frame_entry["processing_type"] = "text_processing"
@@ -93,15 +107,12 @@ def main(video_path: str, model_type: str, fps: float = 1.0):
             frame_entry["processing_type"] = "image_processing"
             frame_entry["notes"] = "First presentation frame."
             prev_ocr_text = comparator.compute_text(frame)
+            img_path = os.path.join(images_dir, f"frame_{idx:05d}.jpg")
+            cv2.imwrite(img_path, frame)
+            print(f"    Saved first unique presentation frame: {img_path}")
         prev_frame = frame
         frame_results.append(frame_entry)
-    # Save results to JSON
-    output_dir = os.path.join("output", "main_pipeline_res")
-    os.makedirs(output_dir, exist_ok=True)
-    video_name = os.path.splitext(os.path.basename(video_path))[0]
-    timestamp_str = time.strftime("%Y%m%d_%H%M%S")
-    json_filename = f"{video_name}_image_analysis_{timestamp_str}.json"
-    json_path = os.path.join(output_dir, json_filename)
+    # Save results to JSON and unique images
     metadata = {
         "video_file": {
             "path": video_path,
@@ -120,8 +131,9 @@ def main(video_path: str, model_type: str, fps: float = 1.0):
             "classifier_model": model_type
         },
         "output_info": {
-            "output_directory": output_dir,
-            "results_file": json_filename
+            "output_directory": analysis_dir,
+            "results_file": json_filename,
+            "images_directory": images_dir
         }
     }
     summary = {
@@ -142,6 +154,7 @@ def main(video_path: str, model_type: str, fps: float = 1.0):
         import json
         json.dump(export, f, indent=2, ensure_ascii=False)
     print(f"[INFO] Frame-by-frame JSON results exported to: {json_path}")
+    print(f"[INFO] Distinct presentation frames saved to: {images_dir}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Main Pipeline for Frame-by-Frame Video Analysis")
