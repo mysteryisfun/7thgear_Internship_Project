@@ -15,8 +15,6 @@ import cv2
 import numpy as np
 import tensorflow as tf
 import time
-import json
-from datetime import datetime
 from src.main_workflow.frame_loader import frame_generator
 from src.main_workflow.frame_comparator import FrameComparator
 
@@ -40,26 +38,14 @@ def main(video_path: str, model_type: str, fps: float = 1.0):
     prev_frame = None
     prev_ocr_text = None
     frame_results = []
-    start_time = datetime.now()
-    output_dir = os.path.join("output", "main_pipeline_res")
-    os.makedirs(output_dir, exist_ok=True)
-    video_name = os.path.splitext(os.path.basename(video_path))[0]
-    timestamp_str = start_time.strftime("%Y%m%d_%H%M%S")
-    json_filename = f"{video_name}_image_analysis_{timestamp_str}.json"
-    json_path = os.path.join(output_dir, json_filename)
-    total_people = 0
-    total_presentation = 0
-    total_unique_images = 0
-    total_unique_texts = 0
-    total_discarded = 0
+    start_time = time.time()
     for idx, frame, ts in frame_generator(video_path, fps=fps):
-        # Always classify first
         start_pred = time.perf_counter()
         label, prob = classifier(model, frame)
         pred_time = time.perf_counter() - start_pred
-        frame_id = f"frame_{idx:05d}"
+        print(f"Frame {idx} at {ts:.2f}s: Classification: {label} (probability: {prob:.2f}) | predict_time: {pred_time:.4f} sec")
         frame_entry = {
-            "frame_id": frame_id,
+            "frame_id": f"frame_{idx:05d}",
             "frame_timestamp": ts,
             "classification": label,
             "classification_probability": float(prob),
@@ -75,10 +61,9 @@ def main(video_path: str, model_type: str, fps: float = 1.0):
         if label == 'people':
             frame_entry["processing_type"] = "discarded"
             frame_entry["notes"] = "Frame classified as people, discarded."
-            total_people += 1
             frame_results.append(frame_entry)
-            continue  # Discard people frames immediately
-        total_presentation += 1
+            continue
+        # Only 'presentation' frames go to duplicate/unique checks
         if prev_frame is not None:
             is_img_unique, is_text_unique, ocr_text, phash_diff, text_sim = comparator.is_unique(frame, prev_frame, prev_ocr_text)
             frame_entry["phash_diff"] = int(phash_diff) if phash_diff is not None else None
@@ -87,16 +72,16 @@ def main(video_path: str, model_type: str, fps: float = 1.0):
             if is_img_unique:
                 frame_entry["duplicate_status"] = "unique_image"
                 frame_entry["processing_type"] = "image_processing"
-                total_unique_images += 1
+                print(f"  UNIQUE IMAGE (phash diff: {phash_diff}) -> send to image processing")
             elif is_text_unique:
                 frame_entry["duplicate_status"] = "unique_text"
                 frame_entry["processing_type"] = "text_processing"
-                total_unique_texts += 1
+                print(f"  UNIQUE TEXT (sim: {text_sim:.3f}) -> send to text processing")
             else:
                 frame_entry["duplicate_status"] = "duplicate"
                 frame_entry["processing_type"] = "discarded"
                 frame_entry["notes"] = "Duplicate frame, discarded."
-                total_discarded += 1
+                print(f"  DUPLICATE (phash diff: {phash_diff}, sim: {text_sim:.3f}) -> discard")
                 frame_results.append(frame_entry)
                 prev_frame = frame
                 prev_ocr_text = ocr_text
@@ -108,25 +93,24 @@ def main(video_path: str, model_type: str, fps: float = 1.0):
             frame_entry["processing_type"] = "image_processing"
             frame_entry["notes"] = "First presentation frame."
             prev_ocr_text = comparator.compute_text(frame)
-            total_unique_images += 1
         prev_frame = frame
         frame_results.append(frame_entry)
-    # Build metadata and summary
-    video_file = {
-        "path": video_path,
-        "filename": os.path.basename(video_path),
-        "size_bytes": os.path.getsize(video_path) if os.path.exists(video_path) else None
-    }
+    # Save results to JSON
+    output_dir = os.path.join("output", "main_pipeline_res")
+    os.makedirs(output_dir, exist_ok=True)
+    video_name = os.path.splitext(os.path.basename(video_path))[0]
+    timestamp_str = time.strftime("%Y%m%d_%H%M%S")
+    json_filename = f"{video_name}_image_analysis_{timestamp_str}.json"
+    json_path = os.path.join(output_dir, json_filename)
     metadata = {
-        "video_file": video_file,
+        "video_file": {
+            "path": video_path,
+            "filename": os.path.basename(video_path),
+            "size_bytes": os.path.getsize(video_path) if os.path.exists(video_path) else None
+        },
         "processing_info": {
-            "timestamp": start_time.isoformat(),
-            "processing_date": start_time.strftime("%Y-%m-%d"),
-            "processing_time": start_time.strftime("%H:%M:%S"),
-            "total_frames_extracted": idx + 1,
-            "total_unique_images": total_unique_images,
-            "total_unique_texts": total_unique_texts,
-            "total_discarded": total_discarded,
+            "timestamp": timestamp_str,
+            "total_frames_extracted": len(frame_results),
             "video_duration_seconds": frame_results[-1]["frame_timestamp"] if frame_results else 0
         },
         "parameters": {
@@ -137,18 +121,17 @@ def main(video_path: str, model_type: str, fps: float = 1.0):
         },
         "output_info": {
             "output_directory": output_dir,
-            "analysis_folder": f"{video_name}_image_analysis_{timestamp_str}",
-            "results_file": json_filename,
-            "frames_directory": "output/frames"
+            "results_file": json_filename
         }
     }
     summary = {
-        "total_frames": idx + 1,
-        "unique_images": total_unique_images,
-        "unique_texts": total_unique_texts,
-        "discarded": total_discarded,
-        "people_frames": total_people,
-        "presentation_frames": total_presentation
+        "total_frames": len(frame_results),
+        "people_frames": sum(1 for f in frame_results if f["classification"] == 'people'),
+        "presentation_frames": sum(1 for f in frame_results if f["classification"] == 'presentation'),
+        "unique_images": sum(1 for f in frame_results if f["duplicate_status"] == 'unique_image'),
+        "unique_texts": sum(1 for f in frame_results if f["duplicate_status"] == 'unique_text'),
+        "duplicates": sum(1 for f in frame_results if f["duplicate_status"] == 'duplicate'),
+        "first_presentations": sum(1 for f in frame_results if f["duplicate_status"] == 'first_presentation')
     }
     export = {
         "metadata": metadata,
@@ -156,6 +139,7 @@ def main(video_path: str, model_type: str, fps: float = 1.0):
         "frames": frame_results
     }
     with open(json_path, "w", encoding="utf-8") as f:
+        import json
         json.dump(export, f, indent=2, ensure_ascii=False)
     print(f"[INFO] Frame-by-frame JSON results exported to: {json_path}")
 

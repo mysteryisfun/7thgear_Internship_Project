@@ -13,9 +13,12 @@ import os
 import cv2
 from tqdm import tqdm
 
-INPUT_ROOT = os.path.join('data', 'classifier1')
+INPUT_ROOT = os.path.join('data', 'classifier2','augmented')
+OUTPUT_ROOT = os.path.join('data', 'classifier2', 'resized')
+CLASSES = ['text', 'image']
+"""INPUT_ROOT = os.path.join('data', 'classifier1','augmented')
 OUTPUT_ROOT = os.path.join('data', 'classifier1', 'resized')
-CLASSES = ['people', 'presentation']
+CLASSES = ['people', 'presentation']"""
 TARGET_SIZE = (224, 224)
 
 os.makedirs(OUTPUT_ROOT, exist_ok=True)
