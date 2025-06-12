@@ -38,8 +38,8 @@ python src/main_workflow/main_pipeline.py --video data/faces_and_text.mp4 --mode
 - **Class:** `FrameComparator`
 - **Description:**
   - Compares each presentation frame to the previous one using:
-    - **Perceptual Hash (phash):** Detects near-duplicate images.
-    - **OCR + Text Similarity:** Extracts text (via PaddleOCR) and computes cosine similarity using TensorFlow BERT embeddings.
+    - **DINOv2 Embedding Cosine Similarity:** Detects near-duplicate images using deep visual features.
+    - **OCR + Text Similarity:** Extracts text (via PaddleOCR) and computes cosine similarity using BERT embeddings.
   - Frames are categorized as `unique_image`, `unique_text`, or `duplicate` based on thresholds.
 
 ### 4. JSON Export of Results
@@ -48,7 +48,7 @@ python src/main_workflow/main_pipeline.py --video data/faces_and_text.mp4 --mode
   - Results are exported as a structured JSON file containing:
     - `metadata`: Video info, processing parameters, output info
     - `summary`: Frame and classification statistics
-    - `frames`: List of per-frame results with all relevant fields (classification, duplicate status, phash, text similarity, OCR text, timing, etc.)
+    - `frames`: List of per-frame results with all relevant fields (classification, duplicate status, embedding similarity, text similarity, OCR text, timing, etc.)
   - The output filename includes the video name and a timestamp for traceability.
 
 ## Files Used in the Pipeline

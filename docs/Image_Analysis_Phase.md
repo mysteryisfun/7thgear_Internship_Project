@@ -48,8 +48,8 @@ Eliminate redundant frames by checking visual and/or textual similarity. Only re
 
 ### **Steps:**
 
-1. **Compare consecutive frames using visual hash algorithms** (e.g., perceptual hash `phash`).
-2. **Define threshold for image similarity** to flag duplicates.
+1. **Compare consecutive frames using deep visual embedding similarity** (DINOv2 cosine similarity, replaces perceptual hash `phash`).
+2. **Define threshold for embedding similarity** to flag duplicates.
 3. **Use previously extracted text (OCR)** and compute textual similarity (e.g., fuzzy match or embedding cosine similarity).
 4. **Keep a frame only if**:
 
