@@ -34,3 +34,4 @@ dependencies:
       - imagehash>=4.3.1
       - cdifflib==1.2.9
       - albumentations==1.3.1
+      - accelerate
