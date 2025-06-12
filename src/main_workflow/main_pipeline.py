@@ -8,13 +8,14 @@ Usage (PowerShell):
     python src/main_workflow/main_pipeline.py --video data/faces_and_text.mp4 --model CNN
     python src/main_workflow/main_pipeline.py --video data/faces_and_text.mp4 --model EFF
 """
-
+import torch
 import os
 import argparse
 import cv2
 import numpy as np
-import tensorflow as tf
+#import tensorflow as tf
 import time
+from datetime import datetime
 from src.main_workflow.frame_loader import frame_generator
 from src.main_workflow.frame_comparator import FrameComparator
 
@@ -27,6 +28,29 @@ CLASSIFIER_MODELS = {
     'EFF': (eff_load_model, eff_predict)
 }
 
+def save_frame_and_json(frame, frame_entry, output_dir):
+    """
+    Save a unique frame and its corresponding JSON entry to the specified directory.
+
+    Args:
+        frame (np.ndarray): The frame image to save.
+        frame_entry (dict): The JSON entry corresponding to the frame.
+        output_dir (str): The directory to save the frame and JSON file.
+    """
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Save the frame
+    frame_filename = f"{frame_entry['frame_id']}.jpg"
+    frame_path = os.path.join(output_dir, frame_filename)
+    cv2.imwrite(frame_path, frame)
+
+    # Save the JSON file
+    json_filename = f"{os.path.basename(output_dir)}.json"
+    json_path = os.path.join(output_dir, json_filename)
+    with open(json_path, "w", encoding="utf-8") as f:
+        import json
+        json.dump(frame_entry, f, indent=2, ensure_ascii=False)
+
 def main(video_path: str, model_type: str, fps: float = 1.0):
     if model_type not in CLASSIFIER_MODELS:
         raise ValueError(f"Invalid model_type: {model_type}. Use 'CNN' or 'EFF'.")
@@ -34,21 +58,16 @@ def main(video_path: str, model_type: str, fps: float = 1.0):
     print(f"[INFO] Using {model_type} model for classification.")
     print(f"[INFO] Processing video: {video_path}")
     model = load_model()
-    comparator = FrameComparator(phash_threshold=5, text_threshold=0.85)
+    comparator = FrameComparator(phash_threshold=0.94, text_threshold=0.85)
     prev_frame = None
     prev_ocr_text = None
     frame_results = []
     start_time = time.time()
-    output_dir = os.path.join("output", "main_pipeline_res")
-    os.makedirs(output_dir, exist_ok=True)
     video_name = os.path.splitext(os.path.basename(video_path))[0]
-    timestamp_str = time.strftime("%Y%m%d_%H%M%S")
-    analysis_folder = f"{video_name}_image_analysis_{timestamp_str}"
-    analysis_dir = os.path.join(output_dir, analysis_folder)
-    images_dir = os.path.join(analysis_dir, "images")
-    os.makedirs(images_dir, exist_ok=True)
-    json_filename = f"{video_name}_image_analysis_{timestamp_str}.json"
-    json_path = os.path.join(analysis_dir, json_filename)
+    timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_dir = os.path.join("output", "main_pipeline_res", f"{video_name}_{timestamp_str}")
+
+    os.makedirs(output_dir, exist_ok=True)
 
     for idx, frame, ts in frame_generator(video_path, fps=fps):
         start_pred = time.perf_counter()
@@ -62,8 +81,7 @@ def main(video_path: str, model_type: str, fps: float = 1.0):
             "classification_probability": float(prob),
             "predict_time_sec": float(pred_time),
             "duplicate_status": None,
-            "phash": None,
-            "phash_diff": None,
+            "embedding_time": None,
             "text_similarity": None,
             "ocr_text": None,
             "processing_type": None,
@@ -76,17 +94,14 @@ def main(video_path: str, model_type: str, fps: float = 1.0):
             continue
         # Only 'presentation' frames go to duplicate/unique checks
         if prev_frame is not None:
-            is_img_unique, is_text_unique, ocr_text, phash_diff, text_sim = comparator.is_unique(frame, prev_frame, prev_ocr_text)
-            frame_entry["phash_diff"] = int(phash_diff) if phash_diff is not None else None
+            is_img_unique, is_text_unique, ocr_text, embedding_time, text_sim = comparator.is_unique(frame, prev_frame, prev_ocr_text)
+            frame_entry["embedding_time"] = float(embedding_time)
             frame_entry["text_similarity"] = float(text_sim) if text_sim is not None else None
             frame_entry["ocr_text"] = ocr_text
             if is_img_unique:
                 frame_entry["duplicate_status"] = "unique_image"
                 frame_entry["processing_type"] = "image_processing"
-                print(f"  UNIQUE IMAGE (phash diff: {phash_diff}) -> send to image processing and save image.")
-                img_path = os.path.join(images_dir, f"frame_{idx:05d}.jpg")
-                cv2.imwrite(img_path, frame)
-                print(f"    Saved unique presentation frame: {img_path}")
+                print(f"  UNIQUE IMAGE (embedding time: {embedding_time:.4f}s) -> send to image processing")
             elif is_text_unique:
                 frame_entry["duplicate_status"] = "unique_text"
                 frame_entry["processing_type"] = "text_processing"
@@ -95,7 +110,7 @@ def main(video_path: str, model_type: str, fps: float = 1.0):
                 frame_entry["duplicate_status"] = "duplicate"
                 frame_entry["processing_type"] = "discarded"
                 frame_entry["notes"] = "Duplicate frame, discarded."
-                print(f"  DUPLICATE (phash diff: {phash_diff}, sim: {text_sim:.3f}) -> discard")
+                print(f"  DUPLICATE (embedding time: {embedding_time:.4f}s, sim: {text_sim:.3f}) -> discard")
                 frame_results.append(frame_entry)
                 prev_frame = frame
                 prev_ocr_text = ocr_text
@@ -107,12 +122,14 @@ def main(video_path: str, model_type: str, fps: float = 1.0):
             frame_entry["processing_type"] = "image_processing"
             frame_entry["notes"] = "First presentation frame."
             prev_ocr_text = comparator.compute_text(frame)
-            img_path = os.path.join(images_dir, f"frame_{idx:05d}.jpg")
-            cv2.imwrite(img_path, frame)
-            print(f"    Saved first unique presentation frame: {img_path}")
         prev_frame = frame
         frame_results.append(frame_entry)
-    # Save results to JSON and unique images
+        if frame_entry["duplicate_status"] in ["unique_image", "unique_text", "first_presentation"]:
+            save_frame_and_json(frame, frame_entry, output_dir)
+
+    # Save results to JSON
+    json_filename = f"{video_name}_image_analysis_{timestamp_str}.json"
+    json_path = os.path.join(output_dir, json_filename)
     metadata = {
         "video_file": {
             "path": video_path,
@@ -131,9 +148,8 @@ def main(video_path: str, model_type: str, fps: float = 1.0):
             "classifier_model": model_type
         },
         "output_info": {
-            "output_directory": analysis_dir,
-            "results_file": json_filename,
-            "images_directory": images_dir
+            "output_directory": output_dir,
+            "results_file": json_filename
         }
     }
     summary = {
@@ -154,7 +170,7 @@ def main(video_path: str, model_type: str, fps: float = 1.0):
         import json
         json.dump(export, f, indent=2, ensure_ascii=False)
     print(f"[INFO] Frame-by-frame JSON results exported to: {json_path}")
-    print(f"[INFO] Distinct presentation frames saved to: {images_dir}")
+    print(f"[INFO] All unique frames and JSON results saved to: {output_dir}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Main Pipeline for Frame-by-Frame Video Analysis")
