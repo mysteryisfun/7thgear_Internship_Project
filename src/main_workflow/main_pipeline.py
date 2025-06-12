@@ -73,44 +73,62 @@ def main(video_path: str, model_type: str, fps: float = 1.0):
         start_pred = time.perf_counter()
         label, prob = classifier(model, frame)
         pred_time = time.perf_counter() - start_pred
-        print(f"Frame {idx} at {ts:.2f}s: Classification: {label} (probability: {prob:.2f}) | predict_time: {pred_time:.4f} sec")
-        frame_entry = {
-            "frame_id": f"frame_{idx:05d}",
-            "frame_timestamp": ts,
-            "classification": label,
-            "classification_probability": float(prob),
-            "predict_time_sec": float(pred_time),
-            "duplicate_status": None,
-            "embedding_time": None,
-            "text_similarity": None,
-            "ocr_text": None,
-            "processing_type": None,
-            "notes": ""
-        }
+        # New detailed print format
+        print(f"{'='*59}")
+        print(f"Frame {idx} at {ts:.2f}s: {label}")
+        print(f"  Classification: {label} | Model: {model_type} | Confidence: {prob:.2f} | Time: {pred_time:.4f}s")
         if label == 'people':
-            frame_entry["processing_type"] = "discarded"
-            frame_entry["notes"] = "Frame classified as people, discarded."
+            print(f"  Result: PEOPLE -> Discard")
+            print(f"{'='*59}")
+            frame_entry = {
+                "frame_id": f"frame_{idx:05d}",
+                "frame_timestamp": ts,
+                "classification": label,
+                "classification_probability": float(prob),
+                "predict_time_sec": float(pred_time),
+                "duplicate_status": None,
+                "embedding_time": None,
+                "text_similarity": None,
+                "ocr_text": None,
+                "processing_type": "discarded",
+                "notes": "Frame classified as people, discarded."
+            }
             frame_results.append(frame_entry)
             continue
         # Only 'presentation' frames go to duplicate/unique checks
         if prev_frame is not None:
             is_img_unique, is_text_unique, ocr_text, embedding_time, text_sim = comparator.is_unique(frame, prev_frame, prev_ocr_text)
-            frame_entry["embedding_time"] = float(embedding_time)
-            frame_entry["text_similarity"] = float(text_sim) if text_sim is not None else None
-            frame_entry["ocr_text"] = ocr_text
+            frame_entry = {
+                "frame_id": f"frame_{idx:05d}",
+                "frame_timestamp": ts,
+                "classification": label,
+                "classification_probability": float(prob),
+                "predict_time_sec": float(pred_time),
+                "duplicate_status": None,
+                "embedding_time": float(embedding_time),
+                "text_similarity": float(text_sim) if text_sim is not None else None,
+                "ocr_text": ocr_text,
+                "processing_type": None,
+                "notes": ""
+            }
+            print(f"  Embedding Similarity: {comparator.phash_threshold if not is_img_unique else (1.0 if text_sim is None else text_sim):.5f}")
+            print(f"  Embedding Time: {embedding_time:.4f}s")
+            print(f"  Text Similarity: {text_sim:.4f}")
+            print(f"  Text Processing Time: {embedding_time:.4f}s")
             if is_img_unique:
                 frame_entry["duplicate_status"] = "unique_image"
                 frame_entry["processing_type"] = "image_processing"
-                print(f"  UNIQUE IMAGE (embedding time: {embedding_time:.4f}s) -> send to image processing")
+                print(f"  Result: UNIQUE IMAGE -> Image Processing")
             elif is_text_unique:
                 frame_entry["duplicate_status"] = "unique_text"
                 frame_entry["processing_type"] = "text_processing"
-                print(f"  UNIQUE TEXT (sim: {text_sim:.3f}) -> send to text processing")
+                print(f"  Result: UNIQUE TEXT -> Text Processing")
             else:
                 frame_entry["duplicate_status"] = "duplicate"
                 frame_entry["processing_type"] = "discarded"
                 frame_entry["notes"] = "Duplicate frame, discarded."
-                print(f"  DUPLICATE (embedding time: {embedding_time:.4f}s, sim: {text_sim:.3f}) -> discard")
+                print(f"  Result: DUPLICATE -> Discard")
+                print(f"{'='*59}")
                 frame_results.append(frame_entry)
                 prev_frame = frame
                 prev_ocr_text = ocr_text
@@ -118,14 +136,25 @@ def main(video_path: str, model_type: str, fps: float = 1.0):
             prev_ocr_text = ocr_text
         else:
             # Always keep the first presentation frame
-            frame_entry["duplicate_status"] = "first_presentation"
-            frame_entry["processing_type"] = "image_processing"
-            frame_entry["notes"] = "First presentation frame."
-            prev_ocr_text = comparator.compute_text(frame)
+            frame_entry = {
+                "frame_id": f"frame_{idx:05d}",
+                "frame_timestamp": ts,
+                "classification": label,
+                "classification_probability": float(prob),
+                "predict_time_sec": float(pred_time),
+                "duplicate_status": "first_presentation",
+                "embedding_time": None,
+                "text_similarity": None,
+                "ocr_text": None,
+                "processing_type": "image_processing",
+                "notes": "First presentation frame."
+            }
+            print(f"  Result: FIRST PRESENTATION -> Image Processing")
         prev_frame = frame
         frame_results.append(frame_entry)
         if frame_entry["duplicate_status"] in ["unique_image", "unique_text", "first_presentation"]:
             save_frame_and_json(frame, frame_entry, output_dir)
+        print(f"{'='*59}")
 
     # Save results to JSON
     json_filename = f"{video_name}_image_analysis_{timestamp_str}.json"
