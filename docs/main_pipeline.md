@@ -4,7 +4,18 @@
 
 **Prerequisites:**
 - Ensure you have the Conda environment `pygpu` set up with all dependencies installed (see `requirements.txt`).
+- Download the Gemma 2B model weights locally (see below for instructions).
 - Place your input video in the `data/` directory or provide the correct path.
+
+**Download and Setup Gemma 2B Model (for local GPU inference):**
+```powershell
+# Install Hugging Face CLI if not already
+pip install "huggingface_hub[cli]"
+# Login to Hugging Face
+huggingface-cli login
+# Download model weights
+huggingface-cli download google/gemma-2-2b-it --local-dir ./gemma-2b-it
+```
 
 **Run the pipeline using PowerShell:**
 ```powershell
@@ -42,13 +53,21 @@ python src/main_workflow/main_pipeline.py --video data/faces_and_text.mp4 --mode
     - **OCR + Text Similarity:** Extracts text (via PaddleOCR) and computes cosine similarity using BERT embeddings.
   - Frames are categorized as `unique_image`, `unique_text`, or `duplicate` based on thresholds.
 
-### 4. JSON Export of Results
+### 4. Text Extraction and Context Analysis (NEW)
+- **File:** `src/text_processing/paddleocr_text_extractor.py`, `src/text_processing/gemma_2B_context_transformers.py`
+- **Description:**
+  - PaddleOCR is used for robust text extraction from frames.
+  - The extracted text is passed to the Gemma 2B model (via HuggingFace transformers, local GPU) for context extraction and scene understanding.
+  - The Gemma extractor uses direct model.generate() and tokenizer.decode() for maximum compatibility and GPU support on Windows.
+  - All context extraction is performed locally, no LM Studio or cloud API required.
+
+### 5. JSON Export of Results
 - **Location:** `output/main_pipeline_res/`
 - **Description:**
   - Results are exported as a structured JSON file containing:
     - `metadata`: Video info, processing parameters, output info
     - `summary`: Frame and classification statistics
-    - `frames`: List of per-frame results with all relevant fields (classification, duplicate status, embedding similarity, text similarity, OCR text, timing, etc.)
+    - `frames`: List of per-frame results with all relevant fields (classification, duplicate status, embedding similarity, text similarity, OCR text, timing, Gemma context, etc.)
   - The output filename includes the video name and a timestamp for traceability.
 
 ## Files Used in the Pipeline
@@ -58,6 +77,7 @@ python src/main_workflow/main_pipeline.py --video data/faces_and_text.mp4 --mode
 - `src/image_processing/classifier1_models/custom_cnn_classifier.py` — CNN classifier
 - `src/image_processing/classifier1_models/efficientnet_functional.py` — EfficientNet classifier
 - `src/text_processing/paddleocr_text_extractor.py` — OCR extraction (used by comparator)
+- `src/text_processing/gemma_2B_context_transformers.py` — Gemma 2B context extraction (local GPU, transformers)
 - `src/text_processing/bert_processor.py` — TensorFlow BERT for text similarity
 
 ## Output
@@ -67,3 +87,5 @@ python src/main_workflow/main_pipeline.py --video data/faces_and_text.mp4 --mode
 ## Notes
 - All code is designed to run in the `pygpu` Conda environment.
 - For further details on the output structure, see the JSON file generated after running the pipeline.
+- For full GPU support on Windows, the pipeline uses direct model.generate() and tokenizer.decode() for Gemma 2B, bypassing Triton and TorchInductor.
+- If you encounter GPU issues, see the troubleshooting section in `docs/text_extraction&processing.md`.
