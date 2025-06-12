@@ -27,7 +27,7 @@ def process_video(
     video_path: str,
     output_dir: str,
     fps: float = 1.0,
-    similarity_threshold: float = 0.8,
+    similarity_threshold: float = 0.95,
     tesseract_path: str = None,
     use_paddleocr: bool = False
 ) -> Tuple[List[str], List[str]]:
@@ -273,7 +273,7 @@ def main():
         "--similarity-threshold", "-s",
         help="Threshold for text similarity (0.0 to 1.0)",
         type=float,
-        default=0.8
+        default=0.95
     )
     parser.add_argument(
         "--tesseract-path", "-t",

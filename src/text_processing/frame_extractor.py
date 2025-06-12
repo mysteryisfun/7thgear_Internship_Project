@@ -74,5 +74,5 @@ class FrameExtractor:
             
         except ImportError:
             raise ImportError("ffmpeg-python package not installed. Run: pip install ffmpeg-python")
-        except ffmpeg.Error as e:
-            raise RuntimeError(f"FFmpeg error: {e.stderr.decode() if e.stderr else str(e)}")
+        except Exception as e:
+            raise RuntimeError(f"FFmpeg error: {str(e)}")

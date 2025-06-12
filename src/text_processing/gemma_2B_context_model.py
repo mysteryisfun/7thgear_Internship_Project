@@ -59,6 +59,8 @@ class GemmaContextExtractor:
             json_str = content[json_start:json_end+1]
             # Remove trailing commas before closing braces/brackets
             json_str = re.sub(r',([\s\n]*[}\]])', r'\1', json_str)
+            # Remove unescaped double quotes inside parentheses (common in explanations)
+            json_str = re.sub(r'\(([^)]*?)\"([^)]*?)\)', lambda m: '(' + m.group(1).replace('"', "'", 1) + m.group(2) + ')', json_str)
             try:
                 return json.loads(json_str)
             except Exception as e:

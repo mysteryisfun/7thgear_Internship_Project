@@ -18,6 +18,7 @@ import time
 from datetime import datetime
 from src.main_workflow.frame_loader import frame_generator
 from src.main_workflow.frame_comparator import FrameComparator
+from src.text_processing.gemma_2B_context_model import GemmaContextExtractor
 
 # Import classifier model loader and predict functions
 from src.image_processing.classifier1_models.custom_cnn_classifier import load_model as cnn_load_model, predict_frame_class as cnn_predict
@@ -59,6 +60,7 @@ def main(video_path: str, model_type: str, fps: float = 1.0):
     print(f"[INFO] Processing video: {video_path}")
     model = load_model()
     comparator = FrameComparator(phash_threshold=0.94, text_threshold=0.85)
+    gemma_extractor = GemmaContextExtractor()
     prev_frame = None
     prev_ocr_text = None
     frame_results = []
@@ -73,7 +75,6 @@ def main(video_path: str, model_type: str, fps: float = 1.0):
         start_pred = time.perf_counter()
         label, prob = classifier(model, frame)
         pred_time = time.perf_counter() - start_pred
-        # New detailed print format
         print(f"{'='*59}")
         print(f"Frame {idx} at {ts:.2f}s: {label}")
         print(f"  Classification: {label} | Model: {model_type} | Confidence: {prob:.2f} | Time: {pred_time:.4f}s")
@@ -98,6 +99,11 @@ def main(video_path: str, model_type: str, fps: float = 1.0):
         # Only 'presentation' frames go to duplicate/unique checks
         if prev_frame is not None:
             is_img_unique, is_text_unique, ocr_text, embedding_time, text_sim = comparator.is_unique(frame, prev_frame, prev_ocr_text)
+            # Get the actual cosine similarity value from the comparator's print (or modify is_unique to return it)
+            # For now, recompute here for display (since is_unique prints it but does not return it)
+            embedding1 = comparator.get_cached_embedding(prev_frame)
+            embedding2 = comparator.get_cached_embedding(frame)
+            cosine_sim = float(np.dot(embedding1, embedding2) / (np.linalg.norm(embedding1) * np.linalg.norm(embedding2)))
             frame_entry = {
                 "frame_id": f"frame_{idx:05d}",
                 "frame_timestamp": ts,
@@ -106,12 +112,13 @@ def main(video_path: str, model_type: str, fps: float = 1.0):
                 "predict_time_sec": float(pred_time),
                 "duplicate_status": None,
                 "embedding_time": float(embedding_time),
+                "embedding_similarity": cosine_sim,
                 "text_similarity": float(text_sim) if text_sim is not None else None,
                 "ocr_text": ocr_text,
                 "processing_type": None,
                 "notes": ""
             }
-            print(f"  Embedding Similarity: {comparator.phash_threshold if not is_img_unique else (1.0 if text_sim is None else text_sim):.5f}")
+            print(f"  Embedding Similarity: {cosine_sim:.5f}")
             print(f"  Embedding Time: {embedding_time:.4f}s")
             print(f"  Text Similarity: {text_sim:.4f}")
             print(f"  Text Processing Time: {embedding_time:.4f}s")
@@ -122,7 +129,13 @@ def main(video_path: str, model_type: str, fps: float = 1.0):
             elif is_text_unique:
                 frame_entry["duplicate_status"] = "unique_text"
                 frame_entry["processing_type"] = "text_processing"
-                print(f"  Result: UNIQUE TEXT -> Text Processing")
+                # Call Gemma only for unique_text frames
+                gemma_start = time.perf_counter()
+                gemma_output = gemma_extractor.extract_context(ocr_text)
+                gemma_time = time.perf_counter() - gemma_start
+                frame_entry["gemma_context"] = gemma_output
+                frame_entry["gemma_time_sec"] = gemma_time
+                print(f"  Result: UNIQUE TEXT -> Text Processing (Gemma time: {gemma_time:.4f}s)")
             else:
                 frame_entry["duplicate_status"] = "duplicate"
                 frame_entry["processing_type"] = "discarded"
