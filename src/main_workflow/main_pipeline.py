@@ -23,6 +23,7 @@ from src.text_processing.gemma_2B_context_model import GemmaContextExtractor
 # Import classifier model loader and predict functions
 from src.image_processing.classifier1_models.custom_cnn_classifier import load_model as cnn_load_model, predict_frame_class as cnn_predict
 from src.image_processing.classifier1_models.efficientnet_functional import load_model as eff_load_model, predict_frame_class as eff_predict
+from src.image_processing.classifier2_models.clip_classifier import classify_presentation_frame
 
 CLASSIFIER_MODELS = {
     'CNN': (cnn_load_model, cnn_predict),
@@ -75,12 +76,12 @@ def main(video_path: str, model_type: str, fps: float = 1.0):
         start_pred = time.perf_counter()
         label, prob = classifier(model, frame)
         pred_time = time.perf_counter() - start_pred
-        print(f"{'='*59}")
-        print(f"Frame {idx} at {ts:.2f}s: {label}")
-        print(f"  Classification: {label} | Model: {model_type} | Confidence: {prob:.2f} | Time: {pred_time:.4f}s")
+        #print(f"{'='*59}")
+        #print(f"Frame {idx} at {ts:.2f}s: {label}")
+        #print(f"  Classification: {label} | Model: {model_type} | Confidence: {prob:.2f} | Time: {pred_time:.4f}s")
         if label == 'people':
-            print(f"  Result: PEOPLE -> Discard")
-            print(f"{'='*59}")
+            #print(f"  Result: PEOPLE -> Discard")
+            #print(f"{'='*59}")
             frame_entry = {
                 "frame_id": f"frame_{idx:05d}",
                 "frame_timestamp": ts,
@@ -118,14 +119,37 @@ def main(video_path: str, model_type: str, fps: float = 1.0):
                 "processing_type": None,
                 "notes": ""
             }
+            # Print frame analysis summary ONCE per frame, after all processing
+            print(f"{'='*59}")
+            print(f"Frame {idx} at {ts:.2f}s: {label}")
+            print(f"  Classification: {label} | Model: {model_type} | Confidence: {prob:.2f} | Time: {pred_time:.4f}s")
             print(f"  Embedding Similarity: {cosine_sim:.5f}")
             print(f"  Embedding Time: {embedding_time:.4f}s")
             print(f"  Text Similarity: {text_sim:.4f}")
             print(f"  Text Processing Time: {embedding_time:.4f}s")
             if is_img_unique:
                 frame_entry["duplicate_status"] = "unique_image"
-                frame_entry["processing_type"] = "image_processing"
                 print(f"  Result: UNIQUE IMAGE -> Image Processing")
+                # --- Classifier 2: CLIP-based text/image classifier ---
+                classifier2_start = time.perf_counter()
+                classifier2_result, classifier2_prob, classifier2_time = classify_presentation_frame(frame)
+                classifier2_elapsed = time.perf_counter() - classifier2_start
+                print(f"  classifier2: {classifier2_result} | Confidence: {classifier2_prob:.3f} | Time: {classifier2_time:.3f}s (total: {classifier2_elapsed:.3f}s)")
+                frame_entry["classifier2_result"] = classifier2_result
+                frame_entry["classifier2_confidence"] = classifier2_prob
+                frame_entry["classifier2_time_sec"] = classifier2_time
+                # --- Route based on classifier2 output ---
+                if classifier2_result == 'text':
+                    # Use OCR text from deduplication, do not run OCR again
+                    gemma_start = time.perf_counter()
+                    gemma_output = gemma_extractor.extract_context(ocr_text)
+                    gemma_time = time.perf_counter() - gemma_start
+                    frame_entry["gemma_context"] = gemma_output
+                    frame_entry["gemma_time_sec"] = gemma_time
+                    print(f"  gemma processing: {gemma_output}, time: {gemma_time:.4f}s")
+                    frame_entry["processing_type"] = "text_processing"
+                elif classifier2_result == 'image':
+                    frame_entry["processing_type"] = "image_processing"
             elif is_text_unique:
                 frame_entry["duplicate_status"] = "unique_text"
                 frame_entry["processing_type"] = "text_processing"
@@ -148,7 +172,9 @@ def main(video_path: str, model_type: str, fps: float = 1.0):
                 continue
             prev_ocr_text = ocr_text
         else:
-            # Always keep the first presentation frame
+            # Treat the first frame as distinct
+            is_img_unique, is_text_unique, ocr_text, embedding_time, text_sim = comparator.is_unique(frame, frame, None)
+            cosine_sim = 1.0  # First frame compared to itself
             frame_entry = {
                 "frame_id": f"frame_{idx:05d}",
                 "frame_timestamp": ts,
@@ -156,18 +182,46 @@ def main(video_path: str, model_type: str, fps: float = 1.0):
                 "classification_probability": float(prob),
                 "predict_time_sec": float(pred_time),
                 "duplicate_status": "first_presentation",
-                "embedding_time": None,
-                "text_similarity": None,
-                "ocr_text": None,
-                "processing_type": "image_processing",
-                "notes": "First presentation frame."
+                "embedding_time": float(embedding_time),
+                "embedding_similarity": cosine_sim,
+                "text_similarity": float(text_sim) if text_sim is not None else None,
+                "ocr_text": ocr_text,
+                "processing_type": None,
+                "notes": "First frame processed as distinct."
             }
-            print(f"  Result: FIRST PRESENTATION -> Image Processing")
+            # Save the frame as distinct
+            save_frame_and_json(frame, frame_entry, output_dir)
+            # Send to classifier2
+            classifier2_start = time.perf_counter()
+            classifier2_result, classifier2_prob, classifier2_time = classify_presentation_frame(frame)
+            classifier2_elapsed = time.perf_counter() - classifier2_start
+            frame_entry["classifier2_result"] = classifier2_result
+            frame_entry["classifier2_confidence"] = classifier2_prob
+            frame_entry["classifier2_time_sec"] = classifier2_time
+            print(f"{'='*59}")
+            print(f"Frame {idx} at {ts:.2f}s: {label}")
+            print(f"  Classification: {label} | Model: {model_type} | Confidence: {prob:.2f} | Time: {pred_time:.4f}s")
+            print(f"  Embedding Similarity: {cosine_sim:.5f}")
+            print(f"  Embedding Time: {embedding_time:.4f}s")
+            print(f"  Text Similarity: {text_sim:.4f}")
+            print(f"  Text Processing Time: {embedding_time:.4f}s")
+            print(f"  classifier2: {classifier2_result} | Confidence: {classifier2_prob:.3f} | Time: {classifier2_time:.3f}s (total: {classifier2_elapsed:.3f}s)")
+            if classifier2_result == 'text':
+                print(f"  Result: UNIQUE TEXT -> Text Processing")
+                frame_entry["processing_type"] = "text_processing"
+            elif classifier2_result == 'image':
+                print(f"  Result: UNIQUE IMAGE -> Image Processing")
+                frame_entry["processing_type"] = "image_processing"
+            print(f"{'='*59}")
+            frame_results.append(frame_entry)
+            prev_frame = frame
+            prev_ocr_text = ocr_text
+            continue
         prev_frame = frame
         frame_results.append(frame_entry)
+        # Save every unique/distinct frame (image or text)
         if frame_entry["duplicate_status"] in ["unique_image", "unique_text", "first_presentation"]:
             save_frame_and_json(frame, frame_entry, output_dir)
-        print(f"{'='*59}")
 
     # Save results to JSON
     json_filename = f"{video_name}_image_analysis_{timestamp_str}.json"

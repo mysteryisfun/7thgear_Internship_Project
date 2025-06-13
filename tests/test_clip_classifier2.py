@@ -23,7 +23,8 @@ def main():
     args = parser.parse_args()
 
     if args.mode == 'text':
-        img_dir = os.path.join('data', 'classifier2', 'test_CLIP', 'text')
+        #img_dir = os.path.join('data', 'classifier2', 'test_CLIP', 'text')
+        img_dir = os.path.join('output', 'frames')
         expected_label = "a slide with mostly text ignoring small insignificant images and people"
     else:
         img_dir = os.path.join('data', 'classifier2', 'test_CLIP', 'images')
@@ -46,7 +47,7 @@ def main():
         "a slide with paragraphs, bullet points, or lists, and any images present are not important for understanding the content",
         "a document-like slide filled with text, possibly with minor graphics, logos, or people profile images, but no meaningful diagrams or charts",
         "a text-based slide that may include attendee photos or company branding, but the focus is on textual information in the presentation area",
-        "a slide that looks like an agenda, minutes, or text document, with no significant visual explanation or diagram",
+        "a slide that looks like an agenda, minutes, or text document, with no significant visual explanation or diagram may contain tables with only text",
         # Image/diagram-rich (robust, allows mixed content, but images/diagrams are key)
         "a presentation slide where images, diagrams, charts, or visual elements are the main focus, even if there is supporting text",
         "a slide with large graphics, illustrations, mindmaps, or infographics, possibly with some text, but the images are essential for understanding",

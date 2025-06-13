@@ -91,5 +91,4 @@ class FrameComparator:
             text_sim = self.text_processor.compute_text_similarity(prev_ocr_text, ocr_text)
         is_img_unique = cosine_sim < self.phash_threshold
         is_text_unique = (cosine_sim >= self.phash_threshold) and (text_sim < self.text_threshold)
-        print(f"Frame Analysis: Cosine Similarity: {cosine_sim:.4f}")
         return is_img_unique, is_text_unique, ocr_text, embedding_time, text_sim

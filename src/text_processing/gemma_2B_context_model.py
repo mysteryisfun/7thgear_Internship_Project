@@ -29,6 +29,7 @@ class GemmaContextExtractor:
         """
         Sends OCR text to the Gemma model and returns the structured context.
         Handles code block formatting and extracts JSON from the response.
+        Tries to robustly parse even if the JSON is malformed or incomplete.
         """
         import re
         payload = {
@@ -38,32 +39,42 @@ class GemmaContextExtractor:
                 {"role": "user", "content": ocr_text}
             ],
             "temperature": temperature,
-            "max_tokens": max_tokens,
-            "stream": False
+            "max_tokens": max_tokens
         }
-        headers = {"Content-Type": "application/json"}
-        response = requests.post(self.api_url, headers=headers, data=json.dumps(payload))
-        response.raise_for_status()
-        result = response.json()
-        content = result['choices'][0]['message']['content']
+        try:
+            response = requests.post(self.api_url, json=payload, timeout=120)
+            response.raise_for_status()
+            result = response.json()
+            content = result["choices"][0]["message"]["content"]
+        except Exception as e:
+            return {"error": str(e), "raw_response": None}
+
+        # Try to extract JSON from the content
+        json_str = None
         # Remove code block markers if present
-        if content.strip().startswith('```'):
-            content = content.strip().lstrip('`').split('\n', 1)[-1]
-            if content.strip().startswith('json'):
-                content = content.strip()[4:]
-            content = content.strip('`').strip()
-        # Extract JSON block from the response
-        json_start = content.find('{')
-        json_end = content.rfind('}')
-        if json_start != -1 and json_end != -1 and json_end > json_start:
-            json_str = content[json_start:json_end+1]
-            # Remove trailing commas before closing braces/brackets
-            json_str = re.sub(r',([\s\n]*[}\]])', r'\1', json_str)
-            # Remove unescaped double quotes inside parentheses (common in explanations)
-            json_str = re.sub(r'\(([^)]*?)\"([^)]*?)\)', lambda m: '(' + m.group(1).replace('"', "'", 1) + m.group(2) + ')', json_str)
-            try:
-                return json.loads(json_str)
-            except Exception as e:
-                print(f"[GemmaContextExtractor] JSON parsing error: {e}\nRaw JSON string: {json_str}")
-        # Fallback: return raw response
-        return {"raw_response": content}
+        content = re.sub(r'```(json)?', '', content).strip()
+        # Find the first and last curly braces
+        start = content.find('{')
+        end = content.rfind('}')
+        if start != -1 and end != -1 and end > start:
+            json_str = content[start:end+1]
+        else:
+            json_str = content
+        # Try to fix common JSON issues
+        try:
+            # Remove trailing commas
+            json_str = re.sub(r',\s*([}\]])', r'\1', json_str)
+            # Add missing closing brackets if possible
+            open_braces = json_str.count('{')
+            close_braces = json_str.count('}')
+            if close_braces < open_braces:
+                json_str += '}' * (open_braces - close_braces)
+            open_brackets = json_str.count('[')
+            close_brackets = json_str.count(']')
+            if close_brackets < open_brackets:
+                json_str += ']' * (open_brackets - close_brackets)
+            parsed = json.loads(json_str)
+            return parsed
+        except Exception as e:
+            # Return raw string for debugging if parsing fails
+            return {"error": f"JSON parsing error: {e}", "raw_response": json_str}
