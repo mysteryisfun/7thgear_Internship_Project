@@ -19,6 +19,7 @@ from datetime import datetime
 from src.main_workflow.frame_loader import frame_generator
 from src.main_workflow.frame_comparator import FrameComparator
 from src.text_processing.gemma_2B_context_model import GemmaContextExtractor
+from src.text_processing.API_text_LLM import GeminiAPIContextExtractor
 
 # Import classifier model loader and predict functions
 from src.image_processing.classifier1_models.custom_cnn_classifier import load_model as cnn_load_model, predict_frame_class as cnn_predict
@@ -53,15 +54,18 @@ def save_frame_and_json(frame, frame_entry, output_dir):
         import json
         json.dump(frame_entry, f, indent=2, ensure_ascii=False)
 
-def main(video_path: str, model_type: str, fps: float = 1.0):
+def main(video_path: str, model_type: str, fps: float = 1.0, text_llm_backend: str = 'LMS'):
     if model_type not in CLASSIFIER_MODELS:
         raise ValueError(f"Invalid model_type: {model_type}. Use 'CNN' or 'EFF'.")
     load_model, classifier = CLASSIFIER_MODELS[model_type]
     print(f"[INFO] Using {model_type} model for classification.")
     print(f"[INFO] Processing video: {video_path}")
     model = load_model()
-    comparator = FrameComparator(phash_threshold=0.94, text_threshold=0.85)
-    gemma_extractor = GemmaContextExtractor()
+    comparator = FrameComparator(text_threshold=0.85)
+    if text_llm_backend == 'API':
+        text_llm_extractor = GeminiAPIContextExtractor()
+    else:
+        text_llm_extractor = GemmaContextExtractor()
     prev_frame = None
     prev_ocr_text = None
     frame_results = []
@@ -142,11 +146,17 @@ def main(video_path: str, model_type: str, fps: float = 1.0):
                 if classifier2_result == 'text':
                     # Use OCR text from deduplication, do not run OCR again
                     gemma_start = time.perf_counter()
-                    gemma_output = gemma_extractor.extract_context(ocr_text)
+                    gemma_output = text_llm_extractor.extract_context(ocr_text)
                     gemma_time = time.perf_counter() - gemma_start
                     frame_entry["gemma_context"] = gemma_output
                     frame_entry["gemma_time_sec"] = gemma_time
-                    print(f"  gemma processing: {gemma_output}, time: {gemma_time:.4f}s")
+                    if text_llm_backend == 'LMS':
+                        print("Text Processor : Gemma 2-2B-it")
+                        print(f"  gemini processing: {gemma_output}, time: {gemma_time:.4f}s")
+                    else:
+                        print("Text Processor : Google gemini-2.0-flash API")
+                        gemma_output= text_llm_extractor.extract_context(ocr_text)
+                        print(f"  Gemini Processing: {gemma_output}, time: {gemma_time:.4f}s")
                     frame_entry["processing_type"] = "text_processing"
                 elif classifier2_result == 'image':
                     frame_entry["processing_type"] = "image_processing"
@@ -155,7 +165,7 @@ def main(video_path: str, model_type: str, fps: float = 1.0):
                 frame_entry["processing_type"] = "text_processing"
                 # Call Gemma only for unique_text frames
                 gemma_start = time.perf_counter()
-                gemma_output = gemma_extractor.extract_context(ocr_text)
+                gemma_output = text_llm_extractor.extract_context(ocr_text)
                 gemma_time = time.perf_counter() - gemma_start
                 frame_entry["gemma_context"] = gemma_output
                 frame_entry["gemma_time_sec"] = gemma_time
@@ -239,9 +249,9 @@ def main(video_path: str, model_type: str, fps: float = 1.0):
         },
         "parameters": {
             "fps": fps,
-            "phash_threshold": comparator.phash_threshold,
             "text_similarity_threshold": comparator.text_threshold,
-            "classifier_model": model_type
+            "classifier_model": model_type,
+            "text_processor_backend": text_llm_backend if text_llm_backend == 'Google Gemini API' else 'Gemma LM Studio'
         },
         "output_info": {
             "output_directory": output_dir,
@@ -273,5 +283,6 @@ if __name__ == "__main__":
     parser.add_argument('--video', type=str, required=True, help='Path to input video file')
     parser.add_argument('--model', type=str, choices=['CNN', 'EFF'], required=True, help='Classifier model to use (CNN or EFF)')
     parser.add_argument('--fps', type=float, default=1.0, help='Frames per second to extract (default 1.0)')
+    parser.add_argument('--text_llm_backend', type=str, choices=['LMS', 'API'], default='LMS', help='Text LLM backend: LMS (Gemma) or API (Gemini)')
     args = parser.parse_args()
-    main(args.video, args.model, args.fps)
+    main(args.video, args.model, args.fps, args.text_llm_backend)

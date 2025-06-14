@@ -1,4 +1,3 @@
-
 <iframe width="768" height="432" src="https://miro.com/app/live-embed/uXjVItwHIT4=/?embedMode=view_only_without_ui&moveToViewport=-1575,21,4698,1410&embedId=394864167890" frameborder="0" scrolling="no" allow="fullscreen; clipboard-read; clipboard-write" allowfullscreen></iframe>
 ## Environment Setup (Recommended)
 Before running the project, set up your environment and install dependencies using Conda for best compatibility:
@@ -18,87 +17,111 @@ pip install -r requirements.txt
 ## Running the Project
 To run the project, use the following command:
 ```bash
-python src/text_processing/main_processor.py <input_video_path> --output-dir <output_directory> --fps <frames_per_second> --similarity-threshold <threshold> --use-paddleocr
+python src/main_workflow/main_pipeline.py --video <input_video_path> --output_dir <output_directory> --fps <frames_per_second> --text_llm_backend <LMS_or_API>
 ```
-conda activate pygpu; $env:PYTHONPATH="."; python src/main_workflow/main_pipeline.py --video data/test_files/test-1.mp4 --model EFF --fps 1.0
-
-eg:python src\text_processing\main_processor.py data\faces_and_text.mp4 --output-dir output --fps 1.0 --similarity-threshold 0.8 --use-paddleocr
+Example:
+```powershell
+conda activate pygpu; $env:PYTHONPATH="."; python src/main_workflow/main_pipeline.py --video data/test_files/test-1.mp4 --output_dir output --fps 1.0 --text_llm_backend LMS
+```
 
 ### Arguments:
 - `<input_video_path>`: Path to the input video file.
-- `--output-dir`: Directory to store the output files.
+- `--output_dir`: Directory to store the output files (default: `output/`).
 - `--fps`: Frames per second for video processing (default: 1.0).
-- `--similarity-threshold`: Threshold for scene similarity (default: 0.8).
-- `--use-paddleocr`: Use PaddleOCR for text extraction (optional).
+- `--text_llm_backend`: Choose the LLM backend for text context extraction. Options: `LMS` (for local Gemma model via LM Studio) or `API` (for Google Gemini API). Default: `LMS`.
 
 ### Data Storage:
 - Store input videos in the `data/` directory.
-- Output files will be saved in the specified `--output-dir`.
+- Output files will be saved in the specified `--output_dir`.
 - **Structured results** saved in organized analysis folders within `output/results/` directory.
-- **Optimized JSON format** with timestamped data and reduced file size.
+- **Optimized JSON format** with timestamped data, including `text_processor_backend` used.
 - **Summary reports** generated automatically for human-readable analysis.
 
 ### Output Structure:
 ```
 output/
 ├── frames/              # All extracted frames
-├── keyframes/           # Scene change frames  
+├── keyframes/           # Scene change frames (deduplicated)
 └── results/             # Analysis results organized by video and timestamp
     └── {video_name}_analysis_{timestamp}/
         ├── {video_name}_analysis_{timestamp}.json  # Structured analysis data
-        └── {video_name}_analysis_{timestamp}.txt   # Human-readable summary
+        └── {video_name}_analysis_{timestamp}.txt   # Human-readable summary (if generated)
 ```
 
-## Purpose of Files in `video_processing` Directory
-- `main_processor.py`: Main pipeline for video processing and data extraction.
+## Purpose of Key Files
+- `src/main_workflow/main_pipeline.py`: Main pipeline for video processing, classification, and data extraction.
+- `src/main_workflow/frame_comparator.py`: Handles frame deduplication using vector embeddings.
+- `src/image_processing/classifier2_models/clip_classifier.py`: Classifies frames as 'text', 'image', or 'other' using CLIP.
+- `src/text_processing/gemma_2B_context_model.py`: Extracts context from text using a local Gemma model (via LM Studio).
+- `src/text_processing/API_text_LLM.py`: Extracts context from text using the Google Gemini API.
+- `src/text_processing/ocr_processor.py`: Handles OCR for text extraction from frames.
 - `output_manager.py`: Structured data storage and JSON export management.
-- `paddleocr_text_extractor.py`: PaddleOCR-based text extraction from frames.
-- `nlp_processing.py`: Advanced NLP processing with spaCy.
 - `frame_extractor.py`: FFmpeg-based frame extraction from videos.
-- `text_processor.py`: Text preprocessing and similarity detection.
-- `bert_processor.py`: Handles text summarization using Pegasus.
+
+## Benchmarking LLMs
+Scripts to benchmark the LLM response times are available in the `tests/` directory:
+- `tests/test_gemma_speed.py`: Benchmarks the local Gemma model.
+- `tests/test_gemini_api_speed.py`: Benchmarks the Google Gemini API.
+
+Run them directly using Python:
+```bash
+python tests/test_gemma_speed.py
+python tests/test_gemini_api_speed.py
+```
 
 ## Installation Requirements
 1. Install Python 3.9 or 3.10.
 2. Install FFmpeg:
    - On Ubuntu: `sudo apt install ffmpeg`
    - On Windows: Download from [FFmpeg.org](https://ffmpeg.org/).
-3. Install PaddleOCR:
-   - Install PaddleOCR via pip: `pip install paddleocr`
+3. Install PaddleOCR (or your preferred OCR engine if modifying the code):
+   - Install PaddleOCR via pip: `pip install paddleocr paddlepaddle` (CPU) or `pip install paddleocr paddlepaddle-gpu` (GPU, ensure CUDA compatibility).
 4. Install project dependencies:
    ```bash
    pip install -r requirements.txt
    ```
+5. For local LLM (Gemma via LM Studio):
+   - Download and run LM Studio.
+   - Download the Gemma 2B model (or preferred compatible model) within LM Studio.
+   - Ensure the LM Studio server is running and accessible (default: `http://localhost:1234/v1`).
 
 ## Technical Stack
 The system leverages a robust suite of tools tailored to each component:
-- **Video Processing**: OpenCV (frame analysis), FFmpeg (video handling), PySceneDetect (scene detection).
-- **Text Extraction**: PaddleOCR (text extraction), spaCy (NLP postprocessing).
-- **Image and Diagram Handling**: ResNet (image classification), YOLO (object detection), BLIP (image captioning), ChartOCR (diagram parsing).
-- **Information Merging**: BART (text summarization), LLM APIs (e.g., OpenAI 4.0/4.1).
+- **Video Processing**: OpenCV (frame analysis), FFmpeg (video handling).
+- **Frame Classification**: OpenAI CLIP (image/text slide classification).
+- **Text Extraction**: PaddleOCR (OCR), other OCR engines can be integrated.
+- **Text Context Extraction**: Local LLMs (e.g., Gemma via LM Studio), API-based LLMs (e.g., Google Gemini).
+- **Image and Diagram Handling**: (Future work) ResNet (image classification), YOLO (object detection), BLIP (image captioning), ChartOCR (diagram parsing).
+- **Information Merging**: (Future work) Advanced LLMs for comprehensive summarization.
+
+## Deduplication Strategy
+- The pipeline now uses vector-based deduplication for identifying unique frames, replacing the previous pHash-based approach. This provides more robust and semantically aware deduplication.
 
 ## Phases
 ### Completed Phases
 1. **Video Processing**:
-   - Implemented frame extraction using OpenCV and PySceneDetect.
-   - Reduced frame rate to optimize processing.
+   - Implemented frame extraction using OpenCV and FFmpeg.
+   - Optimized frame rate for processing.
 2. **Text Extraction**:
-   - Integrated Tesseract and Google Cloud Vision API for OCR.
-   - Postprocessed text using spaCy for error correction.
-3. **Model Testing**:
-   - Tested multiple summarization models (DistilBERT, BART, T5, Pegasus).
-   - Finalized Pegasus (`google/pegasus-xsum`) for summarization.
-4. **Pipeline Updates**:
-   - Removed BERT integration from the main pipeline.
-   - Updated `bert_processor.py` to use Pegasus with tailored prompts.
+   - Integrated PaddleOCR for text extraction.
+3. **Frame Classification & Deduplication**:
+   - Integrated CLIP for classifying frames as text, image, or other.
+   - Implemented vector-based deduplication for unique frame identification.
+4. **Text Context Extraction**:
+   - Integrated support for local LLMs (Gemma via LM Studio) and API-based LLMs (Google Gemini) for context extraction from OCR text.
+   - Added command-line argument to select LLM backend.
+5. **Pipeline Updates**:
+   - Refined main pipeline logic for efficiency and clarity.
+   - Updated output JSON structure.
+   - Added LLM benchmarking scripts.
 
 ### Pending Phases
 1. **Image and Diagram Handling**:
    - Implement ResNet and YOLO for image classification and object detection.
    - Integrate ChartOCR for diagram parsing.
 2. **Information Merging**:
-   - Develop a unified pipeline to merge text, images, and diagrams into timestamped summaries.
-3. **Integration and Scalability**:
-   - Connect to platforms like Zoom and Microsoft Teams for real-time processing.
-   - Deploy on cloud infrastructure for scalability.
+   - Develop a unified pipeline to merge text, images, and diagrams into timestamped summaries using advanced LLMs.
+3. **Enhanced Output & Reporting**:
+   - Generate more comprehensive human-readable summaries.
+   - Visualize pipeline results (e.g., timeline of classified frames).
 
