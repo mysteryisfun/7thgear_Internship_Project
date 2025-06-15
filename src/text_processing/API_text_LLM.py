@@ -1,7 +1,15 @@
 import requests
 from typing import Dict, Any
 import os
-API_KEY = os.environ.get('GEMINI_API_KEY')
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Ensure GEMINI_API_KEY is loaded from .env
+API_KEY = os.getenv("GEMINI_API_KEY")
+if not API_KEY:
+    raise RuntimeError("GEMINI_API_KEY not set in .env file or environment variables.")
+
 class GeminiAPIContextExtractor:
     """
     Extracts meaningful context from OCR text using the Gemini API (flash-2.0 model).

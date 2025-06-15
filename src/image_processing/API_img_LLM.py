@@ -11,14 +11,15 @@ import requests
 import base64
 import time
 from typing import List, Dict, Any, Optional
+from dotenv import load_dotenv
 
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-except ImportError:
-    pass  # dotenv is optional, .env loading is best effort
+load_dotenv()
 
+# Ensure GEMINI_API_KEY is loaded from .env
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+if not GEMINI_API_KEY:
+    raise RuntimeError("GEMINI_API_KEY not set in .env file or environment variables.")
+
 GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
 
 
