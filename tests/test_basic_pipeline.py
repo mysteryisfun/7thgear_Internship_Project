@@ -16,7 +16,7 @@ from src.text_processing.paddleocr_text_extractor import PaddleOCRTextExtractor
 def test_basic_pipeline():
     """Test the basic video processing pipeline."""
     video_path = "data/faces_and_text.mp4"
-    output_dir = "test_basic_output"
+    output_dir = "output/test_basic_output"
     
     if not os.path.exists(video_path):
         print(f"Video file not found: {video_path}")
