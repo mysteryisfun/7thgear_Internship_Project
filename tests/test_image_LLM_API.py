@@ -53,7 +53,7 @@ def test_image_llm_api():
     elapsed = time.perf_counter() - start
     try:
         response.raise_for_status()
-        results = response.json()
+        results = response.json()['candidates'][0]['content']['parts'][0]['text']
         print("[SUCCESS] Gemini API response:")
         print(results)
     except Exception as e:
