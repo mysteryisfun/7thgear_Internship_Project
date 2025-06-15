@@ -1,11 +1,12 @@
 import requests
 from typing import Dict, Any
-
+import os
+API_KEY = os.environ.get('GEMINI_API_KEY')
 class GeminiAPIContextExtractor:
     """
     Extracts meaningful context from OCR text using the Gemini API (flash-2.0 model).
     """
-    def __init__(self, api_key: str = "AIzaSyBrQKQJ-Ce_XvwAYLvAK2sdyzs744F1ZqQ", model: str = "gemini-2.0-flash"):
+    def __init__(self, api_key: str = API_KEY, model: str = "gemini-2.0-flash"):
         self.api_key = api_key
         self.model = model
         self.api_url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent?key={self.api_key}"

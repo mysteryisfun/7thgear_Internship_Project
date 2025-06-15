@@ -5,6 +5,7 @@ This script tests sending an image to the Gemini API (flash-2.0 model) for analy
 It demonstrates how to send a JPEG image and receive a response from the Gemini API.
 
 Usage (PowerShell):
+    $env:GEMINI_API_KEY="<your_api_key>"
     conda activate pygpu
     python tests/test_image_LLM_API.py
 """
@@ -13,8 +14,11 @@ import requests
 import cv2
 import base64
 import time
+import os
 
-API_KEY = 'AIzaSyBrQKQJ-Ce_XvwAYLvAK2sdyzs744F1ZqQ'
+API_KEY = os.environ.get('GEMINI_API_KEY')
+if not API_KEY:
+    raise EnvironmentError("Please set the GEMINI_API_KEY environment variable.")
 MODEL = 'gemini-2.0-flash'
 API_URL = f'https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent?key={API_KEY}'
 
@@ -37,10 +41,6 @@ def test_image_llm_api():
                             'mime_type': 'image/jpeg',
                             'data': img_b64
                         }
-                        
-                    },
-                    {
-                        'text': 'Analyze this image and extract relevant information.'
                     }
                 ]
             }
@@ -53,7 +53,7 @@ def test_image_llm_api():
     elapsed = time.perf_counter() - start
     try:
         response.raise_for_status()
-        results = response.json()['candidates'][0]['content']['parts'][0]['text']
+        results = response.json()
         print("[SUCCESS] Gemini API response:")
         print(results)
     except Exception as e:
