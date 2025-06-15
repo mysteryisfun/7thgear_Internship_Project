@@ -3,3 +3,4 @@ output/
 test_output/
 src/__pycache__/
 src/text_processing/__pycache__/
+.env

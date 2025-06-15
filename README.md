@@ -13,7 +13,15 @@ conda install -c conda-forge cudatoolkit=11.2 cudnn=8.1.0
 # Install all project dependencies using requirements.txt
 pip install -r requirements.txt
 ```
-
+## Environment Variables and API Key Security
+- Example variable: `GEMINI_API_KEY` (used for Google Gemini API access)
+- Set your API key in `.env` 
+- To set the variable in PowerShell for a session:
+  ```powershell
+  $env:GEMINI_API_KEY="<your_api_key>"
+  conda activate pygpu
+  python ...
+  ```
 ## Running the Project
 To run the project, use the following command:
 ```bash
