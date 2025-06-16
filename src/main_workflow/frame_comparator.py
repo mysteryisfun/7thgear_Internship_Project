@@ -22,7 +22,7 @@ import collections
 import imagehash
 
 class FrameComparator:
-    def __init__(self, phash_threshold=5, text_threshold=0.85, cache_size=100):
+    def __init__(self, phash_threshold=0.94, text_threshold=0.85, cache_size=100):
         self.phash_threshold = phash_threshold
         self.text_threshold = text_threshold
         self.ocr = PaddleOCRTextExtractor()
