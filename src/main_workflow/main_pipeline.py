@@ -61,7 +61,7 @@ def main(video_path: str, model_type: str, fps: float = 1.0, text_llm_backend: s
     print(f"[INFO] Using {model_type} model for classification.")
     print(f"[INFO] Processing video: {video_path}")
     model = load_model()
-    comparator = FrameComparator(text_threshold=0.85)
+    comparator = FrameComparator(dino_similarity_threshold=0.98, text_threshold=0.85)
     if text_llm_backend == 'API':
         text_llm_extractor = GeminiAPIContextExtractor()
     else:
@@ -103,12 +103,7 @@ def main(video_path: str, model_type: str, fps: float = 1.0, text_llm_backend: s
             continue
         # Only 'presentation' frames go to duplicate/unique checks
         if prev_frame is not None:
-            is_img_unique, is_text_unique, ocr_text, embedding_time, text_sim = comparator.is_unique(frame, prev_frame, prev_ocr_text)
-            # Get the actual cosine similarity value from the comparator's print (or modify is_unique to return it)
-            # For now, recompute here for display (since is_unique prints it but does not return it)
-            embedding1 = comparator.get_cached_embedding(prev_frame)
-            embedding2 = comparator.get_cached_embedding(frame)
-            cosine_sim = float(np.dot(embedding1, embedding2) / (np.linalg.norm(embedding1) * np.linalg.norm(embedding2)))
+            is_img_unique, is_text_unique, ocr_text, embedding_time, text_sim, cosine_sim = comparator.is_unique(frame, prev_frame, prev_ocr_text)
             frame_entry = {
                 "frame_id": f"frame_{idx:05d}",
                 "frame_timestamp": ts,
@@ -152,10 +147,9 @@ def main(video_path: str, model_type: str, fps: float = 1.0, text_llm_backend: s
                     frame_entry["gemma_time_sec"] = gemma_time
                     if text_llm_backend == 'LMS':
                         print("Text Processor : Gemma 2-2B-it")
-                        print(f"  gemini processing: {gemma_output}, time: {gemma_time:.4f}s")
+                        print(f"  gemma processing: {gemma_output}, time: {gemma_time:.4f}s")
                     else:
                         print("Text Processor : Google gemini-2.0-flash API")
-                        gemma_output= text_llm_extractor.extract_context(ocr_text)
                         print(f"  Gemini Processing: {gemma_output}, time: {gemma_time:.4f}s")
                     frame_entry["processing_type"] = "text_processing"
                 elif classifier2_result == 'image':
@@ -183,8 +177,7 @@ def main(video_path: str, model_type: str, fps: float = 1.0, text_llm_backend: s
             prev_ocr_text = ocr_text
         else:
             # Treat the first frame as distinct
-            is_img_unique, is_text_unique, ocr_text, embedding_time, text_sim = comparator.is_unique(frame, frame, None)
-            cosine_sim = 1.0  # First frame compared to itself
+            is_img_unique, is_text_unique, ocr_text, embedding_time, text_sim, cosine_sim = comparator.is_unique(frame, frame, None)
             frame_entry = {
                 "frame_id": f"frame_{idx:05d}",
                 "frame_timestamp": ts,
@@ -219,6 +212,12 @@ def main(video_path: str, model_type: str, fps: float = 1.0, text_llm_backend: s
             if classifier2_result == 'text':
                 print(f"  Result: UNIQUE TEXT -> Text Processing")
                 frame_entry["processing_type"] = "text_processing"
+                # Add LLM context extraction for first presentation frame
+                gemma_start = time.perf_counter()
+                gemma_output = text_llm_extractor.extract_context(ocr_text)
+                gemma_time = time.perf_counter() - gemma_start
+                frame_entry["gemma_context"] = gemma_output
+                frame_entry["gemma_time_sec"] = gemma_time
             elif classifier2_result == 'image':
                 print(f"  Result: UNIQUE IMAGE -> Image Processing")
                 frame_entry["processing_type"] = "image_processing"
