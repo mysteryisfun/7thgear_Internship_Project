@@ -12,6 +12,8 @@ This script provides a function to send an image to the LM Studio API for proces
 import os
 import base64
 import requests
+import cv2
+import numpy as np
 from typing import Dict, Any
 
 def build_gemini_image_prompt() -> str:
@@ -32,17 +34,23 @@ def build_gemini_image_prompt() -> str:
             "  }"
             "}"
     )
-def encode_image_to_base64(image_path: str) -> str:
-    """Read image and encode as base64 string."""
-    with open(image_path, "rb") as img_file:
-        return base64.b64encode(img_file.read()).decode("utf-8")
+def encode_image_to_base64(image: "str|np.ndarray") -> str:
+    """Encode image from file path or numpy array as base64 string."""
+    if isinstance(image, str):
+        with open(image, "rb") as img_file:
+            return base64.b64encode(img_file.read()).decode("utf-8")
+    elif isinstance(image, np.ndarray):
+        _, buffer = cv2.imencode('.jpg', image)
+        return base64.b64encode(buffer).decode("utf-8")
+    else:
+        raise ValueError("Input must be a file path or numpy array.")
 
-def extract_image_context_lmstudio(image_path: str) -> Dict[str, Any]:
+def extract_image_context_lmstudio(image: "str|np.ndarray") -> Dict[str, Any]:
     """
-    Send an image to the LM Studio API for context extraction using the google/gemma-3-4b model.
+    Send image (file path or numpy array) to the LM Studio API for context extraction using the google/gemma-3-4b model.
 
     Args:
-        image_path: Path to the image file.
+        image: Image file path or numpy array.
 
     Returns:
         A dictionary with keys: topics, subtopics, entities, numerical_values, descriptive_explanation, tasks_identified, key_findings.
@@ -50,24 +58,19 @@ def extract_image_context_lmstudio(image_path: str) -> Dict[str, Any]:
     Raises:
         RuntimeError: If the API request fails or the response cannot be parsed.
     """
-    if not os.path.exists(image_path):
-        raise FileNotFoundError(f"Image file not found: {image_path}")
-
-
-    img_b64 = encode_image_to_base64(image_path)
+    img_b64 = encode_image_to_base64(image)
     payload = {
         "model": "google/gemma-3-4b",
         "messages": [
             {"role": "system", "content": build_gemini_image_prompt()},
             {"role": "user", "content": [
                 {
-                    "type":"image_url",
-                    "image_url":{
+                    "type": "image_url",
+                    "image_url": {
                         "url": f"data:image/jpeg;base64,{img_b64}"
                     }
                 }
-            ]
-            }
+            ]}
         ],
         "temperature": 0.7,
         "max_tokens": -1,
@@ -77,7 +80,7 @@ def extract_image_context_lmstudio(image_path: str) -> Dict[str, Any]:
     url = "http://localhost:1234/v1/chat/completions"
     headers = {"Content-Type": "application/json"}
     import time
-    start= time.time()
+    start = time.time()
     response = requests.post(url, headers=headers, json=payload, timeout=60)
     end = time.time()
     print(f"LM Studio API request took {end - start:.2f} seconds")

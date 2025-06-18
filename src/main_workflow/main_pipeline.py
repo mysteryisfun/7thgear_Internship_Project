@@ -20,6 +20,8 @@ from src.main_workflow.frame_loader import frame_generator
 from src.main_workflow.frame_comparator import FrameComparator
 from src.text_processing.gemma_2B_context_model import GemmaContextExtractor
 from src.text_processing.API_text_LLM import GeminiAPIContextExtractor
+from src.image_processing.API_img_LLM import extract_image_context_gemini
+from src.image_processing.LMS_img_LLM import extract_image_context_lmstudio
 
 # Import classifier model loader and predict functions
 from src.image_processing.classifier1_models.custom_cnn_classifier import load_model as cnn_load_model, predict_frame_class as cnn_predict
@@ -50,11 +52,25 @@ def save_frame_and_json(frame, frame_entry, output_dir):
     # Save the JSON file
     json_filename = f"{os.path.basename(output_dir)}.json"
     json_path = os.path.join(output_dir, json_filename)
+    # Convert all numpy types to native Python types for JSON serialization
+    def convert_types(obj):
+        if isinstance(obj, dict):
+            return {k: convert_types(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [convert_types(v) for v in obj]
+        elif hasattr(obj, 'item') and callable(obj.item):  # numpy scalar
+            return obj.item()
+        elif isinstance(obj, (np.generic, np.ndarray)):
+            return obj.tolist()
+        else:
+            return obj
+    frame_entry = convert_types(frame_entry)
     with open(json_path, "w", encoding="utf-8") as f:
         import json
         json.dump(frame_entry, f, indent=2, ensure_ascii=False)
 
-def main(video_path: str, model_type: str, fps: float = 1.0, text_llm_backend: str = 'LMS'):
+def main(video_path: str, model_type: str, fps: float = 1.0, text_llm_backend: str = 'LMS', image_llm_backend: str = 'API'):
+    main_start=time.time()
     if model_type not in CLASSIFIER_MODELS:
         raise ValueError(f"Invalid model_type: {model_type}. Use 'CNN' or 'EFF'.")
     load_model, classifier = CLASSIFIER_MODELS[model_type]
@@ -154,6 +170,14 @@ def main(video_path: str, model_type: str, fps: float = 1.0, text_llm_backend: s
                     frame_entry["processing_type"] = "text_processing"
                 elif classifier2_result == 'image':
                     frame_entry["processing_type"] = "image_processing"
+                    # --- Image LLM integration ---
+                    print("[INFO] Running Image LLM for image frame...")
+                    if image_llm_backend == 'API':
+                        img_llm_result = extract_image_context_gemini(frame)
+                        print("[Gemini API Image LLM Result]:", img_llm_result)
+                    else:
+                        img_llm_result = extract_image_context_lmstudio(frame)
+                        print("[Gemma LM Studio Image LLM Result]:", img_llm_result)
             elif is_text_unique:
                 frame_entry["duplicate_status"] = "unique_text"
                 frame_entry["processing_type"] = "text_processing"
@@ -221,6 +245,14 @@ def main(video_path: str, model_type: str, fps: float = 1.0, text_llm_backend: s
             elif classifier2_result == 'image':
                 print(f"  Result: UNIQUE IMAGE -> Image Processing")
                 frame_entry["processing_type"] = "image_processing"
+                # --- Image LLM integration for first frame ---
+                print("[INFO] Running Image LLM for image frame...")
+                if image_llm_backend == 'API':
+                    img_llm_result = extract_image_context_gemini(frame)
+                    print("[Gemini API Image LLM Result]:", img_llm_result)
+                else:
+                    img_llm_result = extract_image_context_lmstudio(frame)
+                    print("[Gemma LM Studio Image LLM Result]:", img_llm_result)
             print(f"{'='*59}")
             frame_results.append(frame_entry)
             prev_frame = frame
@@ -271,11 +303,26 @@ def main(video_path: str, model_type: str, fps: float = 1.0, text_llm_backend: s
         "summary": summary,
         "frames": frame_results
     }
+    # Convert all numpy types to native Python types for JSON serialization
+    def convert_types(obj):
+        if isinstance(obj, dict):
+            return {k: convert_types(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [convert_types(v) for v in obj]
+        elif hasattr(obj, 'item') and callable(obj.item):  # numpy scalar
+            return obj.item()
+        elif isinstance(obj, (np.generic, np.ndarray)):
+            return obj.tolist()
+        else:
+            return obj
+    export = convert_types(export)
     with open(json_path, "w", encoding="utf-8") as f:
         import json
         json.dump(export, f, indent=2, ensure_ascii=False)
     print(f"[INFO] Frame-by-frame JSON results exported to: {json_path}")
     print(f"[INFO] All unique frames and JSON results saved to: {output_dir}")
+    main_end = time.time()
+    print(f"[INFO] Main pipeline completed in {main_end - main_start:.2f} seconds")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Main Pipeline for Frame-by-Frame Video Analysis")
@@ -283,5 +330,6 @@ if __name__ == "__main__":
     parser.add_argument('--model', type=str, choices=['CNN', 'EFF'], required=True, help='Classifier model to use (CNN or EFF)')
     parser.add_argument('--fps', type=float, default=1.0, help='Frames per second to extract (default 1.0)')
     parser.add_argument('--text_llm_backend', type=str, choices=['LMS', 'API'], default='LMS', help='Text LLM backend: LMS (Gemma) or API (Gemini)')
+    parser.add_argument('--image_llm_backend', type=str, choices=['API', 'LMS'], default='API', help='Image LLM backend: API (Gemini) or LMS (Gemma LM Studio)')
     args = parser.parse_args()
-    main(args.video, args.model, args.fps, args.text_llm_backend)
+    main(args.video, args.model, args.fps, args.text_llm_backend, args.image_llm_backend)

@@ -12,6 +12,8 @@ import base64
 import time
 from typing import List, Dict, Any, Optional
 from dotenv import load_dotenv
+import cv2
+import numpy as np
 
 load_dotenv()
 
@@ -23,10 +25,16 @@ if not GEMINI_API_KEY:
 GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
 
 
-def encode_image_to_base64(image_path: str) -> str:
-    """Read image and encode as base64 string."""
-    with open(image_path, "rb") as img_file:
-        return base64.b64encode(img_file.read()).decode("utf-8")
+def encode_image_to_base64(image: "str|np.ndarray") -> str:
+    """Encode image from file path or numpy array as base64 string."""
+    if isinstance(image, str):
+        with open(image, "rb") as img_file:
+            return base64.b64encode(img_file.read()).decode("utf-8")
+    elif isinstance(image, np.ndarray):
+        _, buffer = cv2.imencode('.jpg', image)
+        return base64.b64encode(buffer).decode("utf-8")
+    else:
+        raise ValueError("Input must be a file path or numpy array.")
 
 
 def build_gemini_image_prompt() -> str:
@@ -50,13 +58,13 @@ def build_gemini_image_prompt() -> str:
 
 
 def extract_image_context_gemini(
-    image_path: str,
+    image: "str|np.ndarray",
     api_key: Optional[str] = None
 ) -> Dict[str, Any]:
     """
-    Send image to Gemini API and return structured context extraction.
+    Send image (file path or numpy array) to Gemini API and return structured context extraction.
     Args:
-        image_path: Path to image file
+        image_path: Path to image file or numpy array
         api_key: Optionally override GEMINI_API_KEY
     Returns:
         Dict with keys: topics, subtopics, entities, numerical_values, descriptive_explanation, tasks_identified, key_findings
@@ -66,7 +74,7 @@ def extract_image_context_gemini(
     key = api_key or GEMINI_API_KEY
     if not key:
         raise RuntimeError("GEMINI_API_KEY not set in environment or .env file.")
-    img_b64 = encode_image_to_base64(image_path)
+    img_b64 = encode_image_to_base64(image)
     prompt = build_gemini_image_prompt()
     headers = {"Content-Type": "application/json"}
     payload = {
