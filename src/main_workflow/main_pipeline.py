@@ -261,12 +261,10 @@ def main(video_path: str, model_type: str, fps: float = 1.0, text_llm_backend: s
         prev_frame = frame
         frame_results.append(frame_entry)
         # Save every unique/distinct frame (image or text)
-        if frame_entry["duplicate_status"] in ["unique_image", "unique_text", "first_presentation"]:
-            save_frame_and_json(frame, frame_entry, output_dir)
+        """if frame_entry["duplicate_status"] in ["unique_image", "unique_text", "first_presentation"]:
+            save_frame_and_json(frame, frame_entry, output_dir)"""
 
-    # Save results to JSON
-    json_filename = f"{video_name}_image_analysis_{timestamp_str}.json"
-    json_path = os.path.join(output_dir, json_filename)
+    # Define metadata and summary before saving JSON files
     metadata = {
         "video_file": {
             "path": video_path,
@@ -286,7 +284,7 @@ def main(video_path: str, model_type: str, fps: float = 1.0, text_llm_backend: s
         },
         "output_info": {
             "output_directory": output_dir,
-            "results_file": json_filename
+            "results_file": None  # Removed frame-by-frame results file
         }
     }
     summary = {
@@ -298,12 +296,8 @@ def main(video_path: str, model_type: str, fps: float = 1.0, text_llm_backend: s
         "duplicates": sum(1 for f in frame_results if f["duplicate_status"] == 'duplicate'),
         "first_presentations": sum(1 for f in frame_results if f["duplicate_status"] == 'first_presentation')
     }
-    export = {
-        "metadata": metadata,
-        "summary": summary,
-        "frames": frame_results
-    }
-    # Convert all numpy types to native Python types for JSON serialization
+
+    # Ensure convert_types function is accessible
     def convert_types(obj):
         if isinstance(obj, dict):
             return {k: convert_types(v) for k, v in obj.items()}
@@ -315,12 +309,59 @@ def main(video_path: str, model_type: str, fps: float = 1.0, text_llm_backend: s
             return obj.tolist()
         else:
             return obj
-    export = convert_types(export)
-    with open(json_path, "w", encoding="utf-8") as f:
+
+    # Save metadata-only JSON
+    metadata_json_path = os.path.join(output_dir, f"{video_name}_metadata_{timestamp_str}.json")
+    metadata_export = {
+        "video_file": metadata["video_file"],
+        "processing_info": metadata["processing_info"],
+        "parameters": metadata["parameters"],
+        "output_info": metadata["output_info"],
+        "summary": summary
+    }
+    metadata_export = convert_types(metadata_export)
+    with open(metadata_json_path, "w", encoding="utf-8") as f:
         import json
-        json.dump(export, f, indent=2, ensure_ascii=False)
-    print(f"[INFO] Frame-by-frame JSON results exported to: {json_path}")
-    print(f"[INFO] All unique frames and JSON results saved to: {output_dir}")
+        json.dump(metadata_export, f, indent=2, ensure_ascii=False)
+
+    # Save per-frame results JSON
+    frames_json_path = os.path.join(output_dir, f"{video_name}_frames_{timestamp_str}.json")
+    frames_export = convert_types(frame_results)
+    with open(frames_json_path, "w", encoding="utf-8") as f:
+        import json
+        json.dump(frames_export, f, indent=2, ensure_ascii=False)
+
+    # Build and save scenes JSON
+    scenes = []
+    last_scene = None
+    for idx, frame in enumerate(frame_results):
+        if frame["duplicate_status"] in ["unique_image", "unique_text", "first_presentation"]:
+            # Start a new scene
+            if last_scene is not None:
+                last_scene["end_time"] = frame["frame_timestamp"]
+            scene = {
+                "scene_id": f"scene_{len(scenes)+1:05d}",
+                "start_time": frame["frame_timestamp"],
+                "end_time": None,  # Will be set by next scene or at end
+                "frame_id": frame["frame_id"],
+                "classifier2_result": frame.get("classifier2_result"),
+                "info_type": "text" if frame.get("processing_type") == "text_processing" else "image",
+                "context": frame.get("gemma_context") if frame.get("processing_type") == "text_processing" else frame.get("img_context"),
+                "ocr_text": frame.get("ocr_text", "")
+            }
+            scenes.append(scene)
+            last_scene = scene
+    # Set end_time for last scene
+    if last_scene is not None:
+        last_scene["end_time"] = frame_results[-1]["frame_timestamp"] if frame_results else None
+    scenes_json_path = os.path.join(output_dir, f"{video_name}_scenes_{timestamp_str}.json")
+    scenes_export = convert_types(scenes)
+    with open(scenes_json_path, "w", encoding="utf-8") as f:
+        import json
+        json.dump(scenes_export, f, indent=2, ensure_ascii=False)
+    print(f"[INFO] Metadata JSON saved to: {metadata_json_path}")
+    print(f"[INFO] Frames JSON saved to: {frames_json_path}")
+    print(f"[INFO] Scenes JSON saved to: {scenes_json_path}")
     main_end = time.time()
     print(f"[INFO] Main pipeline completed in {main_end - main_start:.2f} seconds")
 
