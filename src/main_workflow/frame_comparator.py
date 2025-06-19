@@ -34,7 +34,7 @@ class FrameComparator:
         self.ocr = PaddleOCRTextExtractor()
         self.text_processor = EnhancedTextProcessor()
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.processor = AutoImageProcessor.from_pretrained("facebook/dinov2-base")
+        self.processor = AutoImageProcessor.from_pretrained("facebook/dinov2-base", use_fast=True)
         self.model = AutoModel.from_pretrained("facebook/dinov2-base").to(self.device)
         self.model.eval()
         self.embedding_cache = collections.OrderedDict()

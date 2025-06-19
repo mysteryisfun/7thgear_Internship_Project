@@ -11,7 +11,7 @@ class BERTProcessor:
         Initialize the BERTProcessor with a pre-trained BERT base uncased model for semantic understanding.
         Uses only TensorFlow backend.
         """
-        self.tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+        self.tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased",use_fast=True)
         self.model = TFAutoModel.from_pretrained("bert-base-uncased")
 
     def get_embeddings(self, text: str) -> tf.Tensor:

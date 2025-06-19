@@ -4,3 +4,4 @@ test_output/
 src/__pycache__/
 src/text_processing/__pycache__/
 .env
+src/image_processing/classifier2_models/__pycache__/
