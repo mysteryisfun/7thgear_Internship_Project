@@ -101,11 +101,20 @@ def extract_image_context_gemini(
             text = text[text.find("\n")+1:]  # Remove the first line (```json)
             if text.endswith("```"):
                 text = text[:text.rfind("```")].strip()
+        # Extract embedded JSON if present
+        embedded_json_start = text.find("{")
+        embedded_json_end = text.rfind("}") + 1
+        if embedded_json_start != -1 and embedded_json_end != -1:
+            text = text[embedded_json_start:embedded_json_end]
         # Try to parse JSON from response
         import json
-        result = json.loads(text)
-        
-        return result
+        try:
+            result = json.loads(text)
+            return result
+        except json.JSONDecodeError as e:
+            raise RuntimeError(f"Failed to parse Gemini response: {e}\nRaw: {resp.text}")
+        except Exception as e:
+            raise RuntimeError(f"Unexpected error while parsing Gemini response: {e}\nRaw: {resp.text}")
     except Exception as e:
         raise RuntimeError(f"Failed to parse Gemini response: {e}\nRaw: {resp.text}")
 

@@ -50,8 +50,8 @@ def save_frame_and_json(frame, frame_entry, output_dir):
     cv2.imwrite(frame_path, frame)
 
     # Save the JSON file
-    json_filename = f"{os.path.basename(output_dir)}.json"
-    json_path = os.path.join(output_dir, json_filename)
+    """json_filename = f"{os.path.basename(output_dir)}.json"
+    json_path = os.path.join(output_dir, json_filename)"""
     # Convert all numpy types to native Python types for JSON serialization
     def convert_types(obj):
         if isinstance(obj, dict):
@@ -65,9 +65,9 @@ def save_frame_and_json(frame, frame_entry, output_dir):
         else:
             return obj
     frame_entry = convert_types(frame_entry)
-    with open(json_path, "w", encoding="utf-8") as f:
+    """with open(json_path, "w", encoding="utf-8") as f:
         import json
-        json.dump(frame_entry, f, indent=2, ensure_ascii=False)
+        json.dump(frame_entry, f, indent=2, ensure_ascii=False)"""
 
 def main(video_path: str, model_type: str, fps: float = 1.0, text_llm_backend: str = 'LMS', image_llm_backend: str = 'API'):
     main_start=time.time()
@@ -77,7 +77,7 @@ def main(video_path: str, model_type: str, fps: float = 1.0, text_llm_backend: s
     print(f"[INFO] Using {model_type} model for classification.")
     print(f"[INFO] Processing video: {video_path}")
     model = load_model()
-    comparator = FrameComparator(dino_similarity_threshold=0.98, text_threshold=0.85)
+    comparator = FrameComparator(dino_similarity_threshold=0.94, text_threshold=0.85)
     if text_llm_backend == 'API':
         text_llm_extractor = GeminiAPIContextExtractor()
     else:
@@ -261,8 +261,8 @@ def main(video_path: str, model_type: str, fps: float = 1.0, text_llm_backend: s
         prev_frame = frame
         frame_results.append(frame_entry)
         # Save every unique/distinct frame (image or text)
-        """if frame_entry["duplicate_status"] in ["unique_image", "unique_text", "first_presentation"]:
-            save_frame_and_json(frame, frame_entry, output_dir)"""
+        if frame_entry["duplicate_status"] in ["unique_image", "unique_text", "first_presentation"]:
+            save_frame_and_json(frame, frame_entry, output_dir)
 
     # Define metadata and summary before saving JSON files
     metadata = {
@@ -279,8 +279,10 @@ def main(video_path: str, model_type: str, fps: float = 1.0, text_llm_backend: s
         "parameters": {
             "fps": fps,
             "text_similarity_threshold": comparator.text_threshold,
+            "image similarity threshold": comparator.dino_similarity_threshold,
             "classifier_model": model_type,
-            "text_processor_backend": text_llm_backend if text_llm_backend == 'Google Gemini API' else 'Gemma LM Studio'
+            "text_processor_backend": text_llm_backend,
+            "image_processor_backend": image_llm_backend,
         },
         "output_info": {
             "output_directory": output_dir,
@@ -370,7 +372,7 @@ if __name__ == "__main__":
     parser.add_argument('--video', type=str, required=True, help='Path to input video file')
     parser.add_argument('--model', type=str, choices=['CNN', 'EFF'], required=True, help='Classifier model to use (CNN or EFF)')
     parser.add_argument('--fps', type=float, default=1.0, help='Frames per second to extract (default 1.0)')
-    parser.add_argument('--text_llm_backend', type=str, choices=['LMS', 'API'], default='LMS', help='Text LLM backend: LMS (Gemma) or API (Gemini)')
+    parser.add_argument('--text_llm_backend', type=str, choices=['LMS', 'API'], default='API', help='Text LLM backend: LMS (Gemma) or API (Gemini)')
     parser.add_argument('--image_llm_backend', type=str, choices=['API', 'LMS'], default='API', help='Image LLM backend: API (Gemini) or LMS (Gemma LM Studio)')
     args = parser.parse_args()
     main(args.video, args.model, args.fps, args.text_llm_backend, args.image_llm_backend)
