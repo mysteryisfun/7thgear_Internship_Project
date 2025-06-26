@@ -26,7 +26,7 @@ def _load_clip():
     global clip_model, clip_processor
     if clip_model is None or clip_processor is None:
         clip_model = CLIPModel.from_pretrained("openai/clip-vit-large-patch14").to(clip_device)
-        clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-large-patch14")
+        clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-large-patch14",use_fast=True)
         print("Loading CLIP model")
 
 # Prompts (robust, as discussed)

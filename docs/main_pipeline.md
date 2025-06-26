@@ -61,7 +61,23 @@ python src/main_workflow/main_pipeline.py --video data/faces_and_text.mp4 --mode
   - The Gemma extractor uses direct model.generate() and tokenizer.decode() for maximum compatibility and GPU support on Windows.
   - All context extraction is performed locally, no LM Studio or cloud API required.
 
-### 5. JSON Export of Results
+### 5. Slide Type Classification (NEW)
+- **File:** `src/image_processing/classifier2_models/clip_classifier.py`
+- **Description:**
+  - Uses OpenAI CLIP (via Hugging Face Transformers) to classify each presentation frame as either `text` (text-only slide) or `image` (diagram/visual-rich slide).
+  - Robust prompt set for real-world slide variations.
+  - Only unique presentation frames are classified; result is used to route frames to the appropriate LLM (text or image context extraction).
+
+### 6. Image LLM Context Extraction (NEW)
+- **Files:**
+  - `src/image_processing/API_img_LLM.py` (Gemini API, Google)
+  - `src/image_processing/LMS_img_LLM.py` (LM Studio, Gemma 3-4b)
+- **Description:**
+  - For frames classified as `image`, sends the frame to the selected image LLM backend (Gemini API or LM Studio) for structured context extraction.
+  - Both modules accept file path or numpy array input, return structured JSON (topics, subtopics, entities, numerical_values, descriptive_explanation, tasks_identified, key_findings).
+  - Robust error handling and output parsing.
+
+### 7. JSON Export of Results
 - **Location:** `output/main_pipeline_res/`
 - **Description:**
   - Results are exported as a structured JSON file containing:
@@ -79,10 +95,14 @@ python src/main_workflow/main_pipeline.py --video data/faces_and_text.mp4 --mode
 - `src/text_processing/paddleocr_text_extractor.py` — OCR extraction (used by comparator)
 - `src/text_processing/gemma_2B_context_transformers.py` — Gemma 2B context extraction (local GPU, transformers)
 - `src/text_processing/bert_processor.py` — TensorFlow BERT for text similarity
+- `src/image_processing/classifier2_models/clip_classifier.py` — CLIP-based text/image slide classifier
+- `src/image_processing/API_img_LLM.py` — Gemini API image LLM integration
+- `src/image_processing/LMS_img_LLM.py` — LM Studio (Gemma) image LLM integration
 
 ## Output
 - The main pipeline creates a JSON file in `output/main_pipeline_res/` with all results and metadata for each run.
 - Each run is timestamped for easy tracking and reproducibility.
+- For each unique presentation frame, both text and image LLM context extraction results are included in the per-frame and scene-level JSON outputs, depending on the classifier2 result.
 
 ## Notes
 - All code is designed to run in the `pygpu` Conda environment.

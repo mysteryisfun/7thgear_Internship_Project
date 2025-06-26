@@ -106,15 +106,27 @@ def extract_image_context_gemini(
         embedded_json_end = text.rfind("}") + 1
         if embedded_json_start != -1 and embedded_json_end != -1:
             text = text[embedded_json_start:embedded_json_end]
+        
+        # Clean malformed JSON
+        def clean_json_string(json_string):
+            import re
+            # Remove extra spaces in numbers (e.g., "4.  00" -> "4.00")
+            json_string = re.sub(r'(\d+)\.\s+(\d+)', r'\1.\2', json_string)
+            # Remove any other unwanted whitespace
+            json_string = re.sub(r'\s+', ' ', json_string).strip()
+            return json_string
+        
+        text = clean_json_string(text)
+        
         # Try to parse JSON from response
         import json
         try:
             result = json.loads(text)
             return result
         except json.JSONDecodeError as e:
-            raise RuntimeError(f"Failed to parse Gemini response: {e}\nRaw: {resp.text}")
+            raise RuntimeError(f"Failed to parse Gemini response: {e}\nRaw: {text}")
         except Exception as e:
-            raise RuntimeError(f"Unexpected error while parsing Gemini response: {e}\nRaw: {resp.text}")
+            raise RuntimeError(f"Unexpected error while parsing Gemini response: {e}\nRaw: {text}")
     except Exception as e:
         raise RuntimeError(f"Failed to parse Gemini response: {e}\nRaw: {resp.text}")
 

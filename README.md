@@ -25,18 +25,19 @@ pip install -r requirements.txt
 ## Running the Project
 To run the project, use the following command:
 ```bash
-python src/main_workflow/main_pipeline.py --video <input_video_path> --output_dir <output_directory> --fps <frames_per_second> --text_llm_backend <LMS_or_API>
+python src/main_workflow/main_pipeline.py --video <input_video_path> --output_dir <output_directory> --fps <frames_per_second> --text_llm_backend <LMS_or_API> --image_llm_backend <LMS_or_API>
 ```
 Example:
 ```powershell
-conda activate pygpu; $env:PYTHONPATH="."; python src/main_workflow/main_pipeline.py --video data/test_files/test-1.mp4 --output_dir output --fps 1.0 --text_llm_backend LMS
+conda activate pygpu; $env:PYTHONPATH="."; python src/main_workflow/main_pipeline.py --video data/test_files/test-1.mp4 --output_dir output --fps 1.0 --text_llm_backend LMS --image_llm_backend API
 ```
 
 ### Arguments:
 - `<input_video_path>`: Path to the input video file.
 - `--output_dir`: Directory to store the output files (default: `output/`).
 - `--fps`: Frames per second for video processing (default: 1.0).
-- `--text_llm_backend`: Choose the LLM backend for text context extraction. Options: `LMS` (for local Gemma model via LM Studio) or `API` (for Google Gemini API). Default: `LMS`.
+- `--text_llm_backend`: Choose the LLM backend for text context extraction. Options: `LMS` (for local Gemma model via LM Studio) or `API` (for Google Gemini API). Default: `API`.
+- `--image_llm_backend`:Choose the LLM backend for image context extraction. Options: `LMS` (for local Gemma model via LM Studio) or `API` (for Google Gemini API). Default: `API`.
 
 ### Data Storage:
 - Store input videos in the `data/` directory.

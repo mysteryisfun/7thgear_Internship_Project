@@ -178,6 +178,8 @@ def main(video_path: str, model_type: str, fps: float = 1.0, text_llm_backend: s
                     else:
                         img_llm_result = extract_image_context_lmstudio(frame)
                         print("[Gemma LM Studio Image LLM Result]:", img_llm_result)
+                    # Add image LLM result to frame_entry
+                    frame_entry["image_llm_context"] = img_llm_result
             elif is_text_unique:
                 frame_entry["duplicate_status"] = "unique_text"
                 frame_entry["processing_type"] = "text_processing"
@@ -253,6 +255,8 @@ def main(video_path: str, model_type: str, fps: float = 1.0, text_llm_backend: s
                 else:
                     img_llm_result = extract_image_context_lmstudio(frame)
                     print("[Gemma LM Studio Image LLM Result]:", img_llm_result)
+                # Add image LLM result to frame_entry
+                frame_entry["image_llm_context"] = img_llm_result
             print(f"{'='*59}")
             frame_results.append(frame_entry)
             prev_frame = frame
@@ -356,11 +360,11 @@ def main(video_path: str, model_type: str, fps: float = 1.0, text_llm_backend: s
     # Set end_time for last scene
     if last_scene is not None:
         last_scene["end_time"] = frame_results[-1]["frame_timestamp"] if frame_results else None
+    # Update scenes JSON with image LLM context
     scenes_json_path = os.path.join(output_dir, f"{video_name}_scenes_{timestamp_str}.json")
-    scenes_export = convert_types(scenes)
     with open(scenes_json_path, "w", encoding="utf-8") as f:
         import json
-        json.dump(scenes_export, f, indent=2, ensure_ascii=False)
+        json.dump(frame_results, f, indent=2, ensure_ascii=False)
     print(f"[INFO] Metadata JSON saved to: {metadata_json_path}")
     print(f"[INFO] Frames JSON saved to: {frames_json_path}")
     print(f"[INFO] Scenes JSON saved to: {scenes_json_path}")

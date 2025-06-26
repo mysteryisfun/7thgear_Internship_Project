@@ -49,6 +49,31 @@ This document provides a comprehensive guide to the current implementation statu
   - Evaluate: `jupyter notebook src/image_processing/classifier1_models/test_custom_cnn_classifier_eval.ipynb`
 - **Integration**: Models can be imported for downstream prediction in the main pipeline.
 
+#### 5. Slide Type Classification (Classifier 2)
+**Purpose**: Classify presentation frames as 'text' or 'image/diagram' using CLIP
+
+**Key Features**:
+- Uses OpenAI CLIP (via Hugging Face Transformers)
+- Robust prompt set for real-world slide variations
+- Only unique presentation frames are classified
+- Result is used to route frames to the appropriate LLM (text or image context extraction)
+
+**File**: `src/image_processing/classifier2_models/clip_classifier.py`
+**Function**: `classify_presentation_frame(frame)`
+
+#### 6. Image LLM Context Extraction
+**Purpose**: Extract structured context from image/diagram slides using an image LLM
+
+**Key Features**:
+- Supports both Gemini API (Google) and LM Studio (Gemma 3-4b)
+- Accepts file path or numpy array input
+- Returns structured JSON (topics, subtopics, entities, numerical_values, descriptive_explanation, tasks_identified, key_findings)
+- Robust error handling and output parsing
+
+**Files**:
+- `src/image_processing/API_img_LLM.py` (Gemini API)
+- `src/image_processing/LMS_img_LLM.py` (LM Studio, Gemma)
+
 ## File Descriptions and Usage
 
 ### Main Processing Files
@@ -156,10 +181,11 @@ python src\video_processing\main_processor.py data\faces_and_text.mp4 --output-d
 
 1. **Video Input**: Load video file from `data/` directory
 2. **Frame Extraction**: Extract frames at specified fps using FFmpeg
-3. **Text Extraction**: Apply PaddleOCR to extract text from each frame
-4. **Scene Detection**: Compare consecutive frame texts for similarity
-5. **NLP Processing**: Apply advanced NLP to scene-change frames only
-6. **Output Generation**: Save processed results to output directory
+3. **Frame Classification**: Classify each frame as 'people' or 'presentation' (Classifier 1)
+4. **Duplicate Detection**: Detect unique presentation frames
+5. **Slide Type Classification**: Classify unique presentation frames as 'text' or 'image' (Classifier 2)
+6. **Text/Image LLM Context Extraction**: Route to Gemma (text) or Gemini/LM Studio (image) for context extraction
+7. **Output Generation**: Save processed results to output directory
 
 ### Scene Detection Logic
 
